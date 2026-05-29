@@ -162,6 +162,12 @@
   .status-dot.live{background:#ef4444;animation:blink 1.2s infinite}
   @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = "https://fogpqsojmhlhmlkmjrrw.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZvZ3Bxc29qbWhsaG1sa21qcnJ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMjg3OTAsImV4cCI6MjA5NTYwNDc5MH0.DYSjshv6tOHi8AUrSurgJd8obbTvWodmFrKDdUfDtbQ";
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+</script>
 </head>
 <body>
 
@@ -317,26 +323,10 @@
 // ============================================================
 const app = {
   code: '', name: '참여자', isAnon: false, attendanceChecked: false,
+  sessionId: null, sessionData: null,
   currentQ: 0, answered: false, timerInterval: null,
-  questions: [
-    {
-      id:1, type:'mc', text:'오늘 세션에서 가장 기대되는 주제는 무엇인가요?',
-      options:['AI와 HR의 미래','조직 문화 혁신','데이터 기반 의사결정','구성원 경험 설계'],
-      timeLimit: 30, showResult: true
-    },
-    {
-      id:2, type:'open', text:'이번 행사에서 얻고 싶은 인사이트를 한 문장으로 적어주세요.',
-      timeLimit: 0, showResult: true
-    },
-    {
-      id:3, type:'word', text:'오늘 행사를 한 단어로 표현한다면?',
-      timeLimit: 0, showResult: true
-    }
-  ],
-  upflows: [
-    {id:1, text:'오늘 발표에서 가장 중요한 메시지를 한 문장으로 요약해주실 수 있나요?', votes:12, voted:false},
-    {id:2, text:'AI 도입 시 가장 큰 조직 내 저항은 무엇이라고 생각하시나요?', votes:8, voted:false},
-  ]
+  questions: [],
+  upflows: []
 };
 
 // ============================================================
@@ -348,14 +338,65 @@ function toggleAnon(el) {
   document.getElementById('name-input').style.display = app.isAnon ? 'none' : 'block';
 }
 
-function joinSession() {
-  const code = document.getElementById('code-input').value.trim();
+async function joinSession() {
+  const code = document.getElementById('code-input').value.trim().toUpperCase();
   if(code.length < 4) { shakeInput(); return; }
   app.code = code;
   app.name = app.isAnon ? '익명' : (document.getElementById('name-input').value.trim() || '참여자');
+
+  const joinBtn = document.querySelector('.join-btn');
+  joinBtn.textContent = '확인 중...'; joinBtn.disabled = true;
+
+  const { data: session, error } = await sb.from('sessions')
+    .select('*').eq('access_code', code).eq('is_active', true).single();
+
+  if (error || !session) {
+    joinBtn.textContent = '참여하기 →'; joinBtn.disabled = false;
+    document.getElementById('code-input').style.borderColor = '#ef4444';
+    setTimeout(() => document.getElementById('code-input').style.borderColor = '', 1500);
+    alert('유효하지 않은 코드이거나 행사가 시작되지 않았습니다');
+    return;
+  }
+
+  app.sessionId = session.id;
+  app.sessionData = session;
+
+  // 문항 로드
+  const { data: questions } = await sb.from('questions')
+    .select('*').eq('session_id', session.id).order('sort_order');
+  app.questions = (questions || []).map(q => ({
+    id: q.id, type: q.type, text: q.text,
+    options: q.options || [], timeLimit: q.time_limit,
+    showResult: q.show_result, isActive: q.is_active, isClosed: q.is_closed
+  }));
+
+  // 실시간 문항 상태 구독
+  subscribeQuestions(session.id);
+
   showScreen('waiting');
   document.getElementById('waiting-code-display').textContent = code;
   document.getElementById('waiting-name-display').textContent = app.name + '님으로 참여 중';
+
+  // 이미 활성 문항이 있으면 바로 홈으로
+  const activeQ = app.questions.find(q => q.isActive);
+  if (activeQ || true) setTimeout(() => enterHome(), 1500);
+}
+
+function subscribeQuestions(sessionId) {
+  sb.channel('audience-questions')
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'questions', filter: `session_id=eq.${sessionId}` }, (payload) => {
+      const q = payload.new;
+      const idx = app.questions.findIndex(x => x.id === q.id);
+      if (idx >= 0) {
+        app.questions[idx] = { ...app.questions[idx], isActive: q.is_active, isClosed: q.is_closed, showResult: q.show_result };
+      }
+      // 새 문항 출제되면 화면이 question이면 자동 렌더
+      if (q.is_active && document.getElementById('screen-question').classList.contains('active')) {
+        const qi = app.questions.findIndex(x => x.id === q.id);
+        if (qi >= 0) { app.currentQ = qi; app.answered = false; renderQuestion(); }
+      }
+    })
+    .subscribe();
 }
 
 function shakeInput() {
@@ -464,11 +505,11 @@ function updateCharCount(el) {
   document.getElementById('char-count').textContent = val.length;
 }
 
-function submitAnswer(auto=false) {
+async function submitAnswer(auto=false) {
   if(app.answered) return;
   const q = app.questions[app.currentQ];
   
-  // Validation
+  let answerText = null, answerIndex = null;
   if(q.type === 'mc') {
     const selected = document.querySelector('.mc-option.selected');
     if(!selected && !auto) { 
@@ -476,10 +517,27 @@ function submitAnswer(auto=false) {
       setTimeout(() => document.getElementById('submit-btn').style.animation = '', 400);
       return;
     }
+    if (selected) {
+      answerIndex = parseInt(selected.id.replace('opt-', ''));
+      answerText = q.options[answerIndex];
+    }
+  } else {
+    answerText = document.getElementById('open-answer')?.value?.trim() || '';
   }
 
   if(app.timerInterval) clearInterval(app.timerInterval);
   app.answered = true;
+
+  // Supabase에 응답 저장
+  if (app.sessionId) {
+    await sb.from('responses').insert({
+      session_id: app.sessionId,
+      question_id: q.id,
+      participant_name: app.name,
+      answer: answerText,
+      answer_index: answerIndex
+    });
+  }
   
   const btn = document.getElementById('submit-btn');
   btn.className = 'submit-btn submitted';
@@ -500,18 +558,24 @@ function submitAnswer(auto=false) {
   }
 }
 
-function showResults(q) {
-  const mockData = q.options ? q.options.map(()=>Math.floor(Math.random()*40+5)) : [];
-  const total = mockData.reduce((a,b)=>a+b,0)||1;
-  const maxVal = Math.max(...mockData);
-  const letters = ['A','B','C','D','E','F'];
+async function showResults(q) {
+  let mcData = [];
+  if (q.type === 'mc' && app.sessionId) {
+    const { data: resps } = await sb.from('responses').select('answer_index').eq('question_id', q.id);
+    const counts = new Array(q.options.length).fill(0);
+    (resps || []).forEach(r => { if (r.answer_index !== null) counts[r.answer_index]++; });
+    const total = counts.reduce((a,b)=>a+b,0) || 1;
+    mcData = counts.map((c,i) => ({ count: c, pct: Math.round(c/total*100) }));
+  }
 
+  const letters = ['A','B','C','D','E','F'];
+  const maxPct = mcData.length ? Math.max(...mcData.map(d=>d.pct)) : 0;
   let html = `<div class="q-type-pill">📊 결과</div><div class="q-text">${q.text}</div>`;
   
   if(q.type === 'mc') {
     html += q.options.map((opt,i) => {
-      const pct = Math.round(mockData[i]/total*100);
-      const isWinner = mockData[i] === maxVal;
+      const pct = mcData[i]?.pct || 0;
+      const isWinner = pct === maxPct && pct > 0;
       return `<div class="result-option">
         <div class="result-top">
           <div class="result-label">${letters[i]}. ${opt}</div>
@@ -523,10 +587,13 @@ function showResults(q) {
       </div>`;
     }).join('');
   } else if(q.type === 'word') {
-    const words = ['혁신','소통','성장','변화','협력','창의','도전','미래','가치','팀워크'];
-    const sizes = [32,28,26,22,20,18,16,16,14,14];
+    const { data: resps } = await sb.from('responses').select('answer').eq('question_id', q.id);
+    const wordMap = {};
+    (resps||[]).forEach(r => { if(r.answer) { const w = r.answer.trim(); wordMap[w] = (wordMap[w]||0)+1; } });
+    const sorted = Object.entries(wordMap).sort((a,b)=>b[1]-a[1]).slice(0,15);
+    const maxC = sorted[0]?.[1] || 1;
     html += `<div class="wordcloud-wrap">` +
-      words.map((w,i) => `<span class="wc-word" style="font-size:${sizes[i]}px;opacity:${1-i*0.06}">${w}</span>`).join('') +
+      sorted.map(([w,c]) => `<span class="wc-word" style="font-size:${14+Math.round(c/maxC*20)}px">${w}</span>`).join('') +
       `</div>`;
   } else {
     html += `<div class="submitted-wrap" style="padding:24px 0">
@@ -537,15 +604,10 @@ function showResults(q) {
   }
 
   document.getElementById('q-body').innerHTML = html;
-  
-  // Animate bars
   setTimeout(() => {
-    document.querySelectorAll('.result-bar-fg').forEach(el => {
-      el.style.width = el.dataset.target + '%';
-    });
+    document.querySelectorAll('.result-bar-fg').forEach(el => { el.style.width = el.dataset.target + '%'; });
   }, 100);
 
-  // Next button
   const btn = document.getElementById('submit-btn');
   btn.disabled = false;
   if(app.currentQ < app.questions.length - 1) {
@@ -582,36 +644,44 @@ function showAsk() {
   showScreen('ask');
 }
 
-function renderAskList() {
-  const sorted = [...app.upflows].sort((a,b)=>b.votes-a.votes);
-  document.getElementById('ask-list').innerHTML = sorted.map(u => `
+async function renderAskList() {
+  if (app.sessionId) {
+    const { data } = await sb.from('upflows').select('*').eq('session_id', app.sessionId).order('vote_count', { ascending: false });
+    app.upflows = (data || []).map(u => ({ id: u.id, text: u.text, votes: u.vote_count, voted: false }));
+  }
+  const list = document.getElementById('ask-list');
+  if (!app.upflows.length) { list.innerHTML = '<div style="text-align:center;padding:32px;color:var(--muted)">아직 질문이 없습니다</div>'; return; }
+  list.innerHTML = app.upflows.map(u => `
     <div class="qlist-item">
       <div class="qlist-vote">
         <div class="qlist-vote-num">${u.votes}</div>
         <div class="qlist-vote-label">추천</div>
-        <button class="qlist-vote-btn ${u.voted?'voted':''}" onclick="voteQuestion(${u.id})">
+        <button class="qlist-vote-btn ${u.voted?'voted':''}" onclick="voteQuestion('${u.id}')">
           ${u.voted ? '✓' : '▲'}
         </button>
       </div>
       <div class="qlist-text">${u.text}</div>
     </div>
-  `).join('') || '<div style="text-align:center;padding:32px;color:var(--muted)">아직 질문이 없습니다</div>';
+  `).join('');
 }
 
-function sendQuestion() {
+async function sendQuestion() {
   const text = document.getElementById('ask-input').value.trim();
-  if(!text) return;
-  app.upflows.push({id:Date.now(), text, votes:0, voted:false});
+  if(!text || !app.sessionId) return;
+  await sb.from('upflows').insert({ session_id: app.sessionId, participant_name: app.name, text, vote_count: 0 });
   document.getElementById('ask-input').value = '';
-  renderAskList();
+  await renderAskList();
 }
 
-function voteQuestion(id) {
+async function voteQuestion(id) {
   const u = app.upflows.find(u=>u.id===id);
   if(!u) return;
-  if(u.voted) { u.votes--; u.voted=false; }
-  else { u.votes++; u.voted=true; }
-  renderAskList();
+  if(u.voted) {
+    await sb.from('upflows').update({ vote_count: Math.max(0, u.votes-1) }).eq('id', id);
+  } else {
+    await sb.from('upflows').update({ vote_count: u.votes+1 }).eq('id', id);
+  }
+  await renderAskList();
 }
 
 // ============================================================
@@ -619,9 +689,16 @@ function voteQuestion(id) {
 // ============================================================
 function showAttendance() { showScreen('attendance'); }
 
-function checkAttendance() {
+async function checkAttendance() {
   if(app.attendanceChecked) return;
   app.attendanceChecked = true;
+  if (app.sessionId) {
+    await sb.from('attendance').insert({
+      session_id: app.sessionId,
+      participant_name: app.name,
+      checked_at: new Date().toISOString()
+    });
+  }
   document.getElementById('att-check-body').innerHTML = `
     <div class="att-icon">✅</div>
     <div class="att-title">출석 완료!</div>

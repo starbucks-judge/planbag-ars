@@ -100,6 +100,12 @@
   .ticker-item{color:rgba(255,255,255,0.6);white-space:nowrap}
   @keyframes scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = "https://fogpqsojmhlhmlkmjrrw.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZvZ3Bxc29qbWhsaG1sa21qcnJ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMjg3OTAsImV4cCI6MjA5NTYwNDc5MH0.DYSjshv6tOHi8AUrSurgJd8obbTvWodmFrKDdUfDtbQ";
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+</script>
 </head>
 <body>
 

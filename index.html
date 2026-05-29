@@ -193,6 +193,12 @@
   ::-webkit-scrollbar-track{background:transparent}
   ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = "https://fogpqsojmhlhmlkmjrrw.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZvZ3Bxc29qbWhsaG1sa21qcnJ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMjg3OTAsImV4cCI6MjA5NTYwNDc5MH0.DYSjshv6tOHi8AUrSurgJd8obbTvWodmFrKDdUfDtbQ";
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+</script>
 </head>
 <body>
 
@@ -553,17 +559,15 @@
 // ============================================================
 const state = {
   sessionActive: false,
+  sessionId: null,
   currentQIndex: -1,
   activeQuestion: null,
   questions: [],
   attendees: [],
-  upflows: [
-    {id:1, text:"오늘 발표에서 가장 중요한 메시지가 무엇인지 한 문장으로 요약해주실 수 있나요?", votes:12, answered:false, time:"14:32"},
-    {id:2, text:"AI 도입 시 가장 큰 조직 내 저항은 무엇이라고 생각하시나요?", votes:8, answered:false, time:"14:35"},
-    {id:3, text:"실제 적용 사례를 좀 더 구체적으로 말씀해주실 수 있을까요?", votes:5, answered:true, time:"14:28"},
-  ],
+  upflows: [],
   responses: {},
-  participants: new Set()
+  participants: new Set(),
+  realtimeChannel: null
 };
 
 // ============================================================
@@ -578,7 +582,7 @@ function switchTab(name, el) {
   document.getElementById('topbar-title').innerHTML = titles[name] + ' <span id="topbar-event-name"></span>';
   updateEventName();
   if(name==='live') refreshLiveQList();
-  if(name==='upflow') renderUpflow();
+  if(name==='upflow') { loadUpflows(); }
   if(name==='attendance') renderAttendance();
 }
 
@@ -731,7 +735,47 @@ function openStartModal() {
   document.getElementById('start-modal').classList.add('open');
 }
 
-function startSession() {
+async function startSession() {
+  const eventName = document.getElementById('event-name').value;
+  const code = document.getElementById('access-code-input').value;
+  const visibility = document.getElementById('result-visibility').value;
+  const allowAnon = document.getElementById('anon-toggle').classList.contains('on');
+
+  const btn = document.querySelector('#start-modal .btn-primary');
+  btn.textContent = '생성 중...'; btn.disabled = true;
+
+  // 1) Supabase에 세션 생성
+  const { data: session, error } = await sb.from('sessions').insert({
+    event_name: eventName,
+    access_code: code,
+    result_visibility: visibility,
+    allow_anonymous: allowAnon,
+    is_active: true
+  }).select().single();
+
+  if (error) { alert('세션 생성 실패: ' + error.message); btn.textContent='▶ 세션 시작'; btn.disabled=false; return; }
+  state.sessionId = session.id;
+
+  // 2) 문항 일괄 저장
+  if (state.questions.length > 0) {
+    const qRows = state.questions.map((q, i) => ({
+      session_id: session.id,
+      sort_order: i,
+      type: q.type,
+      text: q.text,
+      options: q.options || null,
+      time_limit: q.timeLimit || 0,
+      show_result: q.showResult !== false
+    }));
+    const { data: savedQs, error: qErr } = await sb.from('questions').insert(qRows).select();
+    if (!qErr && savedQs) {
+      savedQs.forEach((sq, i) => { state.questions[i].dbId = sq.id; });
+    }
+  }
+
+  // 3) Realtime 구독 (참여자 수, UpFlow, 응답)
+  subscribeRealtime(session.id);
+
   state.sessionActive = true;
   closeModal('start-modal');
   document.getElementById('session-status-badge').innerHTML = '● LIVE';
@@ -739,16 +783,50 @@ function startSession() {
   document.getElementById('session-status-badge').style.color = '#f87197';
   document.getElementById('live-pulse').style.background = '#4ade80';
   document.getElementById('live-status-text').textContent = '세션 진행 중';
-  document.getElementById('live-event-name-display').textContent = document.getElementById('event-name').value;
+  document.getElementById('live-event-name-display').textContent = eventName;
   document.getElementById('start-session-btn').style.display = 'none';
   document.getElementById('live-controls').style.display = 'flex';
-  // Simulate participants joining
-  simulateParticipants();
   refreshLiveQList();
 }
 
-function endSession() {
+function subscribeRealtime(sessionId) {
+  // 참여자 수 (attendance INSERT)
+  sb.channel('admin-realtime')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'attendance', filter: `session_id=eq.${sessionId}` }, () => {
+      state.participants.add(Date.now());
+      const cnt = state.participants.size;
+      document.getElementById('live-realtime-count').textContent = cnt;
+      document.getElementById('live-attendee-count').textContent = '참여자 ' + cnt + '명';
+    })
+    // 응답 INSERT → 진행 중 문항 응답률 업데이트
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'responses', filter: `session_id=eq.${sessionId}` }, async () => {
+      if (!state.activeQuestion?.dbId) return;
+      const { count } = await sb.from('responses').select('*', { count: 'exact', head: true }).eq('question_id', state.activeQuestion.dbId);
+      const total = Math.max(state.participants.size, 1);
+      const pct = Math.round((count || 0) / total * 100);
+      const el1 = document.getElementById('resp-progress');
+      const el2 = document.getElementById('resp-count');
+      const el3 = document.getElementById('resp-pct');
+      if (el1) el1.style.width = pct + '%';
+      if (el2) el2.textContent = '응답 ' + (count || 0) + '명';
+      if (el3) el3.textContent = pct + '%';
+    })
+    // UpFlow INSERT
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'upflows', filter: `session_id=eq.${sessionId}` }, async () => {
+      await loadUpflows();
+    })
+    // UpFlow UPDATE (vote_count 변경)
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'upflows', filter: `session_id=eq.${sessionId}` }, async () => {
+      await loadUpflows();
+    })
+    .subscribe();
+}
+
+async function endSession() {
   if(!confirm('세션을 종료하시겠습니까?')) return;
+  if (state.sessionId) {
+    await sb.from('sessions').update({ is_active: false }).eq('id', state.sessionId);
+  }
   state.sessionActive = false;
   document.getElementById('session-status-badge').innerHTML = '● 종료됨';
   document.getElementById('session-status-badge').style.background = 'rgba(255,255,255,0.1)';
@@ -757,17 +835,6 @@ function endSession() {
   document.getElementById('live-status-text').textContent = '세션 종료됨';
   document.getElementById('start-session-btn').style.display = 'inline-flex';
   document.getElementById('live-controls').style.display = 'none';
-}
-
-function simulateParticipants() {
-  let count = 0;
-  const target = 47;
-  const interval = setInterval(() => {
-    count = Math.min(count + Math.floor(Math.random()*5)+1, target);
-    document.getElementById('live-realtime-count').textContent = count;
-    document.getElementById('live-attendee-count').textContent = '참여자 '+count+'명';
-    if(count >= target) clearInterval(interval);
-  }, 800);
 }
 
 // ============================================================
@@ -829,43 +896,43 @@ function renderCurrentQ(q) {
   `;
 }
 
-function launchQuestion() {
+async function launchQuestion() {
   if(state.currentQIndex < 0 || !state.sessionActive) {
     alert(state.sessionActive ? '문항을 선택해주세요' : '세션을 먼저 시작해주세요');
     return;
   }
   const q = state.questions[state.currentQIndex];
   state.activeQuestion = q;
+
+  // 이전 활성 문항 비활성화
+  if (state.sessionId) {
+    await sb.from('questions').update({ is_active: false }).eq('session_id', state.sessionId);
+    // 현재 문항 활성화
+    if (q.dbId) {
+      await sb.from('questions').update({ is_active: true, is_closed: false }).eq('id', q.dbId);
+    }
+  }
   refreshLiveQList();
-  // Simulate responses coming in
-  simulateResponses(q);
 }
 
-function simulateResponses(q) {
-  let count = 0;
-  const total = 47;
-  const interval = setInterval(() => {
-    count = Math.min(count + Math.floor(Math.random()*4)+1, total);
-    const pct = Math.round(count/total*100);
-    const el1 = document.getElementById('resp-progress');
-    const el2 = document.getElementById('resp-count');
-    const el3 = document.getElementById('resp-pct');
-    if(el1) el1.style.width = pct+'%';
-    if(el2) el2.textContent = '응답 '+count+'명';
-    if(el3) el3.textContent = pct+'%';
-    if(count >= total) clearInterval(interval);
-  }, 600);
-}
-
-function closeQuestion() {
+async function closeQuestion() {
   if(!state.activeQuestion) return;
+  if (state.activeQuestion.dbId) {
+    await sb.from('questions').update({ is_active: false, is_closed: true }).eq('id', state.activeQuestion.dbId);
+  }
   state.responses[state.activeQuestion.id] = true;
   refreshLiveQList();
   document.getElementById('current-q-area').innerHTML = `<div class="empty" style="background:var(--surface);border:1px solid var(--border);border-radius:12px"><div class="empty-icon">✅</div><div class="empty-title">문항 마감 완료</div><div class="empty-sub">다음 문항을 선택해주세요</div></div>`;
   state.activeQuestion = null;
 }
 
-function toggleResults() { alert('결과 공개/비공개 토글 — Supabase 연동 후 실시간 반영됩니다'); }
+async function toggleResults() {
+  if (!state.activeQuestion?.dbId) { alert('진행 중인 문항이 없습니다'); return; }
+  const { data: q } = await sb.from('questions').select('show_result').eq('id', state.activeQuestion.dbId).single();
+  const newVal = !q.show_result;
+  await sb.from('questions').update({ show_result: newVal }).eq('id', state.activeQuestion.dbId);
+  alert('결과 ' + (newVal ? '공개' : '비공개') + '로 변경되었습니다');
+}
 function prevQuestion() { if(state.currentQIndex > 0) selectLiveQ(state.currentQIndex-1); }
 function nextQuestion() { if(state.currentQIndex < state.questions.length-1) selectLiveQ(state.currentQIndex+1); }
 
@@ -900,20 +967,30 @@ function renderUpflow() {
   `).join('');
 }
 
+async function loadUpflows() {
+  if (!state.sessionId) return;
+  const { data } = await sb.from('upflows').select('*').eq('session_id', state.sessionId).order('vote_count', { ascending: false });
+  state.upflows = (data || []).map(u => ({
+    id: u.id, text: u.text, votes: u.vote_count,
+    answered: u.is_answered,
+    time: new Date(u.created_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
+  }));
+  renderUpflow();
+}
 function sortUpflow(by) {
   if(by==='votes') state.upflows.sort((a,b)=>b.votes-a.votes);
   else state.upflows.sort((a,b)=>b.time.localeCompare(a.time));
   renderUpflow();
 }
-function markAnswered(id) {
-  const u = state.upflows.find(u=>u.id===id);
-  if(u) { u.answered = true; renderUpflow(); }
+async function markAnswered(id) {
+  await sb.from('upflows').update({ is_answered: true }).eq('id', id);
+  await loadUpflows();
 }
-function deleteUpflow(id) {
-  state.upflows = state.upflows.filter(u=>u.id!==id);
-  renderUpflow();
+async function deleteUpflow(id) {
+  await sb.from('upflows').delete().eq('id', id);
+  await loadUpflows();
 }
-function highlightQ(id) { alert('display.html에 해당 질문이 강조 표시됩니다 (Supabase 연동 후 실시간 반영)'); }
+function highlightQ(id) { alert('display.html에 해당 질문이 강조 표시됩니다'); }
 
 // ============================================================
 // ATTENDANCE
