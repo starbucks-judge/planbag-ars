@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>플랜백 ARS — 참여하기</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700;800&display=swap');
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  :root{
+    --primary:#1a1a2e;--accent:#e94560;--accent2:#0f3460;
+    --bg:#f6f7fb;--surface:#ffffff;--border:#e8eaf0;
+    --text:#1a1a2e;--muted:#8892a4;--success:#10b981;
+    --safe-bottom: env(safe-area-inset-bottom, 16px);
+  }
+  html,body{height:100%;font-family:'Pretendard',sans-serif;color:var(--text);background:var(--bg);font-size:16px;overflow-x:hidden}
+  
+  /* SCREENS */
+  .screen{display:none;min-height:100vh;flex-direction:column}
+  .screen.active{display:flex}
+
+  /* JOIN SCREEN */
+  .join-screen{background:linear-gradient(160deg,var(--primary) 0%,#0f3460 50%,#16213e 100%);align-items:center;justify-content:center;padding:40px 24px}
+  .join-logo{text-align:center;margin-bottom:48px}
+  .join-logo-mark{width:64px;height:64px;background:var(--accent);border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 16px}
+  .join-logo-name{font-size:22px;font-weight:800;color:#fff;letter-spacing:-0.5px}
+  .join-logo-sub{font-size:13px;color:rgba(255,255,255,0.45);margin-top:4px}
+  .join-card{background:rgba(255,255,255,0.07);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.12);border-radius:24px;padding:32px 24px;width:100%;max-width:380px}
+  .join-card-title{font-size:18px;font-weight:700;color:#fff;margin-bottom:24px;text-align:center}
+  .code-input-wrap{position:relative;margin-bottom:20px}
+  .code-input{width:100%;padding:20px 16px;border:2px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.08);border-radius:16px;font-size:28px;font-weight:800;color:#fff;text-align:center;letter-spacing:8px;outline:none;font-family:inherit;caret-color:var(--accent);transition:border .2s}
+  .code-input::placeholder{font-size:14px;letter-spacing:2px;font-weight:400;color:rgba(255,255,255,0.3)}
+  .code-input:focus{border-color:var(--accent)}
+  .name-input{width:100%;padding:14px 16px;border:1.5px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.08);border-radius:12px;font-size:16px;color:#fff;font-family:inherit;outline:none;margin-bottom:12px;transition:border .2s}
+  .name-input::placeholder{color:rgba(255,255,255,0.35)}
+  .name-input:focus{border-color:var(--accent)}
+  .join-btn{width:100%;padding:18px;background:var(--accent);border:none;border-radius:16px;font-size:17px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit;transition:transform .1s,background .15s;margin-top:4px}
+  .join-btn:active{transform:scale(0.98);background:#d63b54}
+  .anon-toggle-wrap{display:flex;align-items:center;gap:10px;margin-bottom:20px;padding:12px 14px;background:rgba(255,255,255,0.06);border-radius:10px}
+  .anon-label{font-size:13px;color:rgba(255,255,255,0.6);flex:1}
+  .toggle-mini{width:40px;height:22px;background:rgba(255,255,255,0.2);border-radius:11px;cursor:pointer;position:relative;transition:background .15s;flex-shrink:0}
+  .toggle-mini.on{background:var(--accent)}
+  .toggle-mini::after{content:'';position:absolute;width:18px;height:18px;background:#fff;border-radius:50%;top:2px;left:2px;transition:transform .15s}
+  .toggle-mini.on::after{transform:translateX(18px)}
+
+  /* WAITING SCREEN */
+  .waiting-screen{background:var(--primary);align-items:center;justify-content:center;text-align:center;padding:40px 24px}
+  .waiting-pulse{width:80px;height:80px;border-radius:50%;background:rgba(233,69,96,0.15);border:2px solid var(--accent);display:flex;align-items:center;justify-content:center;margin:0 auto 24px;animation:glow 2s infinite}
+  @keyframes glow{0%,100%{box-shadow:0 0 0 0 rgba(233,69,96,0.3)}50%{box-shadow:0 0 0 16px rgba(233,69,96,0)}}
+  .waiting-title{font-size:22px;font-weight:700;color:#fff;margin-bottom:8px}
+  .waiting-sub{font-size:15px;color:rgba(255,255,255,0.5)}
+  .waiting-code{font-size:36px;font-weight:800;color:var(--accent);letter-spacing:8px;margin:24px 0}
+  .waiting-name{font-size:14px;color:rgba(255,255,255,0.4);margin-bottom:32px}
+  .demo-btn{padding:12px 28px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:12px;color:rgba(255,255,255,0.7);font-size:14px;font-weight:600;cursor:pointer;font-family:inherit}
+
+  /* QUESTION SCREEN */
+  .question-screen{background:var(--bg)}
+  .q-topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 16px 10px;position:sticky;top:0;z-index:10}
+  .q-topbar-inner{display:flex;align-items:center;justify-content:space-between;max-width:480px;margin:0 auto}
+  .q-progress-outer{display:flex;align-items:center;gap:10px;flex:1}
+  .q-progress-bar{flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden}
+  .q-progress-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .4s ease}
+  .q-num-label{font-size:12px;font-weight:700;color:var(--muted);white-space:nowrap}
+  .timer-badge{display:flex;align-items:center;gap:4px;background:#fef2f2;border:1px solid #fecaca;border-radius:20px;padding:4px 10px;font-size:13px;font-weight:700;color:#dc2626}
+  .timer-badge.urgent{animation:flash .5s infinite}
+  @keyframes flash{0%,100%{opacity:1}50%{opacity:.5}}
+
+  .q-body{padding:20px 16px 120px;max-width:480px;margin:0 auto}
+  .q-type-pill{display:inline-flex;align-items:center;gap:6px;background:#eff6ff;color:#3b82f6;font-size:12px;font-weight:600;padding:4px 12px;border-radius:20px;margin-bottom:12px}
+  .q-text{font-size:20px;font-weight:700;color:var(--text);line-height:1.4;margin-bottom:24px}
+
+  /* MC OPTIONS */
+  .mc-options{display:flex;flex-direction:column;gap:10px}
+  .mc-option{display:flex;align-items:center;gap:14px;padding:16px;background:var(--surface);border:2px solid var(--border);border-radius:16px;cursor:pointer;transition:all .15s;-webkit-user-select:none;user-select:none}
+  .mc-option:active{transform:scale(0.98)}
+  .mc-option.selected{border-color:var(--accent);background:#fff5f7}
+  .mc-option.selected .mc-letter{background:var(--accent)}
+  .mc-letter{width:36px;height:36px;border-radius:10px;background:var(--bg);border:1.5px solid var(--border);color:var(--muted);font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}
+  .mc-option.selected .mc-letter{color:#fff;border-color:var(--accent)}
+  .mc-text{font-size:16px;font-weight:500;color:var(--text);line-height:1.4}
+
+  /* RESULT BARS */
+  .result-option{margin-bottom:10px}
+  .result-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
+  .result-label{font-size:14px;font-weight:600;color:var(--text)}
+  .result-pct{font-size:14px;font-weight:700;color:var(--accent)}
+  .result-bar-bg{height:12px;background:var(--border);border-radius:6px;overflow:hidden}
+  .result-bar-fg{height:100%;background:linear-gradient(90deg,var(--accent2),var(--accent));border-radius:6px;transition:width .6s cubic-bezier(.4,0,.2,1)}
+  .result-bar-fg.winner{background:linear-gradient(90deg,#059669,#10b981)}
+
+  /* OPEN TEXT */
+  .open-textarea{width:100%;padding:16px;border:2px solid var(--border);border-radius:16px;font-size:16px;font-family:inherit;color:var(--text);resize:none;min-height:140px;outline:none;background:var(--surface);transition:border .2s}
+  .open-textarea:focus{border-color:var(--accent)}
+  .char-count{text-align:right;font-size:12px;color:var(--muted);margin-top:6px}
+
+  /* SUBMIT BUTTON */
+  .submit-wrap{position:fixed;bottom:0;left:0;right:0;padding:16px 16px calc(16px + var(--safe-bottom));background:linear-gradient(transparent,var(--bg) 30%);z-index:20}
+  .submit-btn{width:100%;max-width:480px;margin:0 auto;display:block;padding:18px;background:var(--accent);border:none;border-radius:16px;font-size:17px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit;transition:transform .1s,background .15s;box-shadow:0 4px 20px rgba(233,69,96,0.35)}
+  .submit-btn:active{transform:scale(0.99)}
+  .submit-btn:disabled{background:#d1d5db;box-shadow:none;cursor:not-allowed}
+  .submit-btn.submitted{background:var(--success);box-shadow:0 4px 20px rgba(16,185,129,0.35)}
+
+  /* SUBMITTED STATE */
+  .submitted-wrap{text-align:center;padding:40px 24px}
+  .submitted-icon{width:72px;height:72px;border-radius:50%;background:#f0fdf4;border:2px solid #bbf7d0;display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 16px}
+  .submitted-title{font-size:20px;font-weight:700;color:var(--text);margin-bottom:6px}
+  .submitted-sub{font-size:14px;color:var(--muted)}
+
+  /* WORDCLOUD */
+  .wordcloud-wrap{min-height:240px;background:var(--surface);border-radius:16px;border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;flex-wrap:wrap;padding:24px;gap:8px;margin-top:8px}
+  .wc-word{font-weight:700;color:var(--accent2);padding:4px 8px;border-radius:6px;transition:transform .2s}
+  .wc-word:hover{transform:scale(1.1)}
+
+  /* UPFLOW */
+  .upflow-input-wrap{position:relative;margin-bottom:12px}
+  .upflow-input{width:100%;padding:16px;padding-right:56px;border:2px solid var(--border);border-radius:16px;font-size:15px;font-family:inherit;color:var(--text);background:var(--surface);outline:none;transition:border .2s}
+  .upflow-input:focus{border-color:var(--accent)}
+  .upflow-send-btn{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:40px;height:40px;background:var(--accent);border:none;border-radius:10px;color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+  .qlist-item{display:flex;gap:12px;padding:14px;background:var(--surface);border-radius:12px;border:1px solid var(--border);margin-bottom:8px}
+  .qlist-vote{display:flex;flex-direction:column;align-items:center;min-width:40px}
+  .qlist-vote-num{font-size:20px;font-weight:800;color:var(--accent)}
+  .qlist-vote-label{font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase}
+  .qlist-text{font-size:15px;color:var(--text);line-height:1.5}
+  .qlist-vote-btn{margin-top:4px;padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;font-family:inherit;transition:all .15s}
+  .qlist-vote-btn.voted{background:#fef2f2;border-color:#fecaca;color:var(--accent)}
+
+  /* ATTENDANCE */
+  .att-check-wrap{text-align:center;padding:40px 24px}
+  .att-icon{font-size:64px;margin-bottom:16px}
+  .att-title{font-size:22px;font-weight:700;margin-bottom:8px}
+  .att-sub{font-size:15px;color:var(--muted);margin-bottom:32px}
+  .att-check-btn{width:100%;padding:20px;background:var(--success);border:none;border-radius:18px;font-size:18px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit;transition:transform .1s;box-shadow:0 4px 20px rgba(16,185,129,0.35)}
+  .att-check-btn:active{transform:scale(0.98)}
+
+  /* BOTTOM NAV */
+  .bottom-nav{position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);display:flex;padding-bottom:var(--safe-bottom);z-index:30}
+  .bottom-nav.hidden{display:none}
+  .nav-btn{flex:1;padding:10px 4px 8px;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;border:none;background:none;font-family:inherit;color:var(--muted);transition:color .15s}
+  .nav-btn.active{color:var(--accent)}
+  .nav-btn-icon{font-size:22px}
+  .nav-btn-label{font-size:10px;font-weight:600}
+
+  /* HOME SCREEN */
+  .home-screen{background:var(--bg)}
+  .home-header{background:var(--primary);padding:20px 16px 28px;text-align:center}
+  .home-event-name{font-size:22px;font-weight:800;color:#fff;line-height:1.3;margin-bottom:4px}
+  .home-sub{font-size:14px;color:rgba(255,255,255,0.5)}
+  .home-body{padding:16px;padding-bottom:100px;max-width:480px;margin:0 auto}
+  .home-section-title{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin:20px 0 10px}
+  .feature-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px;margin-bottom:10px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:all .15s}
+  .feature-card:active{transform:scale(0.98)}
+  .feature-icon{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+  .feature-icon.quiz{background:#fef2f2}
+  .feature-icon.ask{background:#f0fdf4}
+  .feature-icon.att{background:#eff6ff}
+  .feature-name{font-size:16px;font-weight:700;color:var(--text)}
+  .feature-desc{font-size:13px;color:var(--muted);margin-top:2px}
+  .feature-arrow{margin-left:auto;font-size:18px;color:var(--border)}
+  .status-dot{width:8px;height:8px;border-radius:50%;background:#d1d5db;flex-shrink:0}
+  .status-dot.live{background:#ef4444;animation:blink 1.2s infinite}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+</style>
+</head>
+<body>
+
+<!-- JOIN SCREEN -->
+<div class="screen join-screen active" id="screen-join">
+  <div class="join-logo">
+    <div class="join-logo-mark">🎯</div>
+    <div class="join-logo-name">Planbag ARS</div>
+    <div class="join-logo-sub">행사 참여 시스템</div>
+  </div>
+  <div class="join-card">
+    <div class="join-card-title">행사에 참여하기</div>
+    <input class="code-input" id="code-input" type="text" placeholder="참여 코드 입력" maxlength="6" autocapitalize="characters" autocomplete="off" oninput="this.value=this.value.toUpperCase()">
+    <div id="name-section">
+      <input class="name-input" id="name-input" type="text" placeholder="이름을 입력해주세요 (선택)">
+    </div>
+    <div class="anon-toggle-wrap">
+      <span class="anon-label">익명으로 참여</span>
+      <div class="toggle-mini" id="anon-toggle" onclick="toggleAnon(this)"></div>
+    </div>
+    <button class="join-btn" onclick="joinSession()">참여하기 →</button>
+  </div>
+</div>
+
+<!-- WAITING SCREEN -->
+<div class="screen waiting-screen" id="screen-waiting">
+  <div class="waiting-pulse">🎯</div>
+  <div class="waiting-title">대기 중입니다</div>
+  <div class="waiting-sub">행사가 곧 시작됩니다</div>
+  <div class="waiting-code" id="waiting-code-display">ABCDE</div>
+  <div class="waiting-name" id="waiting-name-display">참여자</div>
+  <button class="demo-btn" onclick="enterHome()">📱 데모: 홈 화면으로 →</button>
+</div>
+
+<!-- HOME SCREEN -->
+<div class="screen home-screen" id="screen-home">
+  <div class="home-header">
+    <div class="home-event-name" id="home-event-name">행사명</div>
+    <div class="home-sub" id="home-participant-name">참여 중</div>
+  </div>
+  <div class="home-body">
+    <div class="home-section-title">참여 메뉴</div>
+    <div class="feature-card" onclick="showQuiz()">
+      <div class="feature-icon quiz">📊</div>
+      <div>
+        <div class="feature-name">퀴즈 / 설문</div>
+        <div class="feature-desc">발표자가 출제하는 문항에 응답해요</div>
+      </div>
+      <div class="status-dot live" id="quiz-dot"></div>
+      <div class="feature-arrow">›</div>
+    </div>
+    <div class="feature-card" onclick="showAsk()">
+      <div class="feature-icon ask">💬</div>
+      <div>
+        <div class="feature-name">질문하기</div>
+        <div class="feature-desc">궁금한 점을 질문하고 공감을 받아요</div>
+      </div>
+      <div class="feature-arrow">›</div>
+    </div>
+    <div class="feature-card" onclick="showAttendance()">
+      <div class="feature-icon att">✅</div>
+      <div>
+        <div class="feature-name">출석 체크</div>
+        <div class="feature-desc">출석 확인을 완료해요</div>
+      </div>
+      <div class="feature-arrow">›</div>
+    </div>
+  </div>
+</div>
+
+<!-- QUESTION SCREEN -->
+<div class="screen question-screen" id="screen-question">
+  <div class="q-topbar">
+    <div class="q-topbar-inner">
+      <button onclick="goHome()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:2px 8px 2px 0">‹</button>
+      <div class="q-progress-outer">
+        <div class="q-progress-bar"><div class="q-progress-fill" id="q-progress" style="width:33%"></div></div>
+        <div class="q-num-label" id="q-num-label">1 / 3</div>
+      </div>
+      <div class="timer-badge" id="timer-badge" style="display:none">⏱ <span id="timer-val">30</span>s</div>
+    </div>
+  </div>
+
+  <div class="q-body" id="q-body">
+    <!-- Dynamically filled -->
+  </div>
+
+  <div class="submit-wrap">
+    <button class="submit-btn" id="submit-btn" onclick="submitAnswer()">응답 제출하기</button>
+  </div>
+</div>
+
+<!-- ASK SCREEN -->
+<div class="screen home-screen" id="screen-ask">
+  <div class="home-header" style="display:flex;align-items:center;gap:12px;text-align:left">
+    <button onclick="goHome()" style="background:rgba(255,255,255,0.1);border:none;color:#fff;border-radius:10px;width:36px;height:36px;font-size:20px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center">‹</button>
+    <div>
+      <div class="home-event-name" style="font-size:18px">질문하기</div>
+      <div class="home-sub">추천이 많은 질문이 먼저 답변됩니다</div>
+    </div>
+  </div>
+  <div style="padding:16px;max-width:480px;margin:0 auto;padding-bottom:80px">
+    <div class="upflow-input-wrap">
+      <textarea class="upflow-input" id="ask-input" placeholder="질문을 입력해주세요..." rows="3" style="border-radius:16px;padding:14px;padding-right:56px;resize:none;height:auto"></textarea>
+      <button class="upflow-send-btn" onclick="sendQuestion()">↑</button>
+    </div>
+    <div id="ask-list">
+      <!-- populated by JS -->
+    </div>
+  </div>
+</div>
+
+<!-- ATTENDANCE SCREEN -->
+<div class="screen home-screen" id="screen-attendance">
+  <div class="home-header" style="display:flex;align-items:center;gap:12px;text-align:left">
+    <button onclick="goHome()" style="background:rgba(255,255,255,0.1);border:none;color:#fff;border-radius:10px;width:36px;height:36px;font-size:20px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center">‹</button>
+    <div>
+      <div class="home-event-name" style="font-size:18px">출석 체크</div>
+      <div class="home-sub">한 번만 체크하면 완료됩니다</div>
+    </div>
+  </div>
+  <div class="att-check-wrap" id="att-check-body">
+    <div class="att-icon">👋</div>
+    <div class="att-title" id="att-check-name">안녕하세요!</div>
+    <div class="att-sub">아래 버튼을 눌러 출석을 확인해주세요</div>
+    <button class="att-check-btn" onclick="checkAttendance()">✅ 출석 체크하기</button>
+  </div>
+</div>
+
+<!-- BOTTOM NAV (hidden on join/waiting) -->
+<nav class="bottom-nav hidden" id="bottom-nav">
+  <button class="nav-btn active" id="nav-home" onclick="goHome()">
+    <span class="nav-btn-icon">🏠</span>
+    <span class="nav-btn-label">홈</span>
+  </button>
+  <button class="nav-btn" id="nav-quiz" onclick="showQuiz()">
+    <span class="nav-btn-icon">📊</span>
+    <span class="nav-btn-label">퀴즈</span>
+  </button>
+  <button class="nav-btn" id="nav-ask" onclick="showAsk()">
+    <span class="nav-btn-icon">💬</span>
+    <span class="nav-btn-label">질문</span>
+  </button>
+  <button class="nav-btn" id="nav-att" onclick="showAttendance()">
+    <span class="nav-btn-icon">✅</span>
+    <span class="nav-btn-label">출석</span>
+  </button>
+</nav>
+
+<script>
+// ============================================================
+// STATE
+// ============================================================
+const app = {
+  code: '', name: '참여자', isAnon: false, attendanceChecked: false,
+  currentQ: 0, answered: false, timerInterval: null,
+  questions: [
+    {
+      id:1, type:'mc', text:'오늘 세션에서 가장 기대되는 주제는 무엇인가요?',
+      options:['AI와 HR의 미래','조직 문화 혁신','데이터 기반 의사결정','구성원 경험 설계'],
+      timeLimit: 30, showResult: true
+    },
+    {
+      id:2, type:'open', text:'이번 행사에서 얻고 싶은 인사이트를 한 문장으로 적어주세요.',
+      timeLimit: 0, showResult: true
+    },
+    {
+      id:3, type:'word', text:'오늘 행사를 한 단어로 표현한다면?',
+      timeLimit: 0, showResult: true
+    }
+  ],
+  upflows: [
+    {id:1, text:'오늘 발표에서 가장 중요한 메시지를 한 문장으로 요약해주실 수 있나요?', votes:12, voted:false},
+    {id:2, text:'AI 도입 시 가장 큰 조직 내 저항은 무엇이라고 생각하시나요?', votes:8, voted:false},
+  ]
+};
+
+// ============================================================
+// JOIN
+// ============================================================
+function toggleAnon(el) {
+  el.classList.toggle('on');
+  app.isAnon = el.classList.contains('on');
+  document.getElementById('name-input').style.display = app.isAnon ? 'none' : 'block';
+}
+
+function joinSession() {
+  const code = document.getElementById('code-input').value.trim();
+  if(code.length < 4) { shakeInput(); return; }
+  app.code = code;
+  app.name = app.isAnon ? '익명' : (document.getElementById('name-input').value.trim() || '참여자');
+  showScreen('waiting');
+  document.getElementById('waiting-code-display').textContent = code;
+  document.getElementById('waiting-name-display').textContent = app.name + '님으로 참여 중';
+}
+
+function shakeInput() {
+  const el = document.getElementById('code-input');
+  el.style.borderColor = '#ef4444';
+  el.style.animation = 'shake .3s ease';
+  setTimeout(() => { el.style.borderColor=''; el.style.animation=''; }, 400);
+}
+
+// ============================================================
+// SCREENS
+// ============================================================
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-'+name).classList.add('active');
+  const navScreens = ['home','question','ask','attendance'];
+  document.getElementById('bottom-nav').classList.toggle('hidden', !navScreens.includes(name));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  const navMap = {home:'nav-home',question:'nav-quiz',ask:'nav-ask',attendance:'nav-att'};
+  if(navMap[name]) document.getElementById(navMap[name])?.classList.add('active');
+}
+
+function enterHome() {
+  document.getElementById('home-event-name').textContent = '2025 HR 컨퍼런스';
+  document.getElementById('home-participant-name').textContent = app.name + '님 환영합니다 👋';
+  document.getElementById('att-check-name').textContent = app.name + '님, 안녕하세요!';
+  showScreen('home');
+}
+
+function goHome() { showScreen('home'); }
+
+// ============================================================
+// QUIZ / DOWNFLOW
+// ============================================================
+function showQuiz() {
+  app.currentQ = 0;
+  app.answered = false;
+  renderQuestion();
+  showScreen('question');
+}
+
+function renderQuestion() {
+  const q = app.questions[app.currentQ];
+  if(!q) return;
+  const total = app.questions.length;
+  document.getElementById('q-progress').style.width = ((app.currentQ+1)/total*100)+'%';
+  document.getElementById('q-num-label').textContent = (app.currentQ+1)+' / '+total;
+  document.getElementById('submit-btn').disabled = false;
+  document.getElementById('submit-btn').className = 'submit-btn';
+  document.getElementById('submit-btn').textContent = '응답 제출하기';
+  app.answered = false;
+
+  if(app.timerInterval) clearInterval(app.timerInterval);
+  const timerBadge = document.getElementById('timer-badge');
+  if(q.timeLimit > 0) {
+    timerBadge.style.display = 'flex';
+    let t = q.timeLimit;
+    document.getElementById('timer-val').textContent = t;
+    app.timerInterval = setInterval(() => {
+      t--;
+      document.getElementById('timer-val').textContent = t;
+      if(t <= 5) timerBadge.classList.add('urgent');
+      if(t <= 0) { clearInterval(app.timerInterval); submitAnswer(true); }
+    }, 1000);
+  } else {
+    timerBadge.style.display = 'none';
+    timerBadge.classList.remove('urgent');
+  }
+
+  const typeLabels = {mc:'객관식',open:'주관식',word:'워드클라우드'};
+  const typeIcons = {mc:'📊',open:'📝',word:'🌐'};
+  let bodyHtml = `
+    <div class="q-type-pill">${typeIcons[q.type]} ${typeLabels[q.type]}</div>
+    <div class="q-text">${q.text}</div>
+  `;
+
+  if(q.type === 'mc') {
+    const letters = ['A','B','C','D','E','F'];
+    bodyHtml += `<div class="mc-options">` +
+      q.options.map((opt,i) => `
+        <div class="mc-option" id="opt-${i}" onclick="selectOption(${i})">
+          <div class="mc-letter">${letters[i]}</div>
+          <div class="mc-text">${opt}</div>
+        </div>
+      `).join('') + `</div>`;
+  } else {
+    const ph = q.type === 'word' ? '한 단어 또는 짧은 단어로 입력해주세요' : '자유롭게 의견을 입력해주세요';
+    bodyHtml += `
+      <textarea class="open-textarea" id="open-answer" placeholder="${ph}" oninput="updateCharCount(this)"></textarea>
+      <div class="char-count"><span id="char-count">0</span> / 200자</div>
+    `;
+  }
+
+  document.getElementById('q-body').innerHTML = bodyHtml;
+}
+
+function selectOption(i) {
+  document.querySelectorAll('.mc-option').forEach((el,idx) => {
+    el.classList.toggle('selected', idx === i);
+  });
+}
+
+function updateCharCount(el) {
+  const val = el.value.slice(0,200);
+  el.value = val;
+  document.getElementById('char-count').textContent = val.length;
+}
+
+function submitAnswer(auto=false) {
+  if(app.answered) return;
+  const q = app.questions[app.currentQ];
+  
+  // Validation
+  if(q.type === 'mc') {
+    const selected = document.querySelector('.mc-option.selected');
+    if(!selected && !auto) { 
+      document.getElementById('submit-btn').style.animation = 'shake .3s ease';
+      setTimeout(() => document.getElementById('submit-btn').style.animation = '', 400);
+      return;
+    }
+  }
+
+  if(app.timerInterval) clearInterval(app.timerInterval);
+  app.answered = true;
+  
+  const btn = document.getElementById('submit-btn');
+  btn.className = 'submit-btn submitted';
+  btn.textContent = '✅ 응답 완료!';
+  btn.disabled = true;
+
+  if(q.showResult) {
+    setTimeout(() => showResults(q), 600);
+  } else {
+    setTimeout(() => {
+      if(app.currentQ < app.questions.length - 1) {
+        app.currentQ++;
+        renderQuestion();
+      } else {
+        showAllDone();
+      }
+    }, 1200);
+  }
+}
+
+function showResults(q) {
+  const mockData = q.options ? q.options.map(()=>Math.floor(Math.random()*40+5)) : [];
+  const total = mockData.reduce((a,b)=>a+b,0)||1;
+  const maxVal = Math.max(...mockData);
+  const letters = ['A','B','C','D','E','F'];
+
+  let html = `<div class="q-type-pill">📊 결과</div><div class="q-text">${q.text}</div>`;
+  
+  if(q.type === 'mc') {
+    html += q.options.map((opt,i) => {
+      const pct = Math.round(mockData[i]/total*100);
+      const isWinner = mockData[i] === maxVal;
+      return `<div class="result-option">
+        <div class="result-top">
+          <div class="result-label">${letters[i]}. ${opt}</div>
+          <div class="result-pct">${pct}%</div>
+        </div>
+        <div class="result-bar-bg">
+          <div class="result-bar-fg ${isWinner?'winner':''}" style="width:0%" data-target="${pct}"></div>
+        </div>
+      </div>`;
+    }).join('');
+  } else if(q.type === 'word') {
+    const words = ['혁신','소통','성장','변화','협력','창의','도전','미래','가치','팀워크'];
+    const sizes = [32,28,26,22,20,18,16,16,14,14];
+    html += `<div class="wordcloud-wrap">` +
+      words.map((w,i) => `<span class="wc-word" style="font-size:${sizes[i]}px;opacity:${1-i*0.06}">${w}</span>`).join('') +
+      `</div>`;
+  } else {
+    html += `<div class="submitted-wrap" style="padding:24px 0">
+      <div class="submitted-icon">💬</div>
+      <div class="submitted-title">응답이 기록되었습니다</div>
+      <div class="submitted-sub">발표자가 응답을 확인 중입니다</div>
+    </div>`;
+  }
+
+  document.getElementById('q-body').innerHTML = html;
+  
+  // Animate bars
+  setTimeout(() => {
+    document.querySelectorAll('.result-bar-fg').forEach(el => {
+      el.style.width = el.dataset.target + '%';
+    });
+  }, 100);
+
+  // Next button
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = false;
+  if(app.currentQ < app.questions.length - 1) {
+    btn.className = 'submit-btn';
+    btn.textContent = '다음 문항 →';
+    btn.onclick = () => { app.currentQ++; renderQuestion(); };
+  } else {
+    btn.className = 'submit-btn submitted';
+    btn.textContent = '모든 문항 완료 ✅';
+    btn.onclick = showAllDone;
+  }
+}
+
+function showAllDone() {
+  document.getElementById('q-body').innerHTML = `
+    <div class="submitted-wrap">
+      <div class="submitted-icon">🎉</div>
+      <div class="submitted-title">모든 문항 완료!</div>
+      <div class="submitted-sub">참여해주셔서 감사합니다</div>
+    </div>
+  `;
+  const btn = document.getElementById('submit-btn');
+  btn.className = 'submit-btn submitted';
+  btn.textContent = '홈으로 돌아가기';
+  btn.disabled = false;
+  btn.onclick = goHome;
+}
+
+// ============================================================
+// UPFLOW (ASK)
+// ============================================================
+function showAsk() {
+  renderAskList();
+  showScreen('ask');
+}
+
+function renderAskList() {
+  const sorted = [...app.upflows].sort((a,b)=>b.votes-a.votes);
+  document.getElementById('ask-list').innerHTML = sorted.map(u => `
+    <div class="qlist-item">
+      <div class="qlist-vote">
+        <div class="qlist-vote-num">${u.votes}</div>
+        <div class="qlist-vote-label">추천</div>
+        <button class="qlist-vote-btn ${u.voted?'voted':''}" onclick="voteQuestion(${u.id})">
+          ${u.voted ? '✓' : '▲'}
+        </button>
+      </div>
+      <div class="qlist-text">${u.text}</div>
+    </div>
+  `).join('') || '<div style="text-align:center;padding:32px;color:var(--muted)">아직 질문이 없습니다</div>';
+}
+
+function sendQuestion() {
+  const text = document.getElementById('ask-input').value.trim();
+  if(!text) return;
+  app.upflows.push({id:Date.now(), text, votes:0, voted:false});
+  document.getElementById('ask-input').value = '';
+  renderAskList();
+}
+
+function voteQuestion(id) {
+  const u = app.upflows.find(u=>u.id===id);
+  if(!u) return;
+  if(u.voted) { u.votes--; u.voted=false; }
+  else { u.votes++; u.voted=true; }
+  renderAskList();
+}
+
+// ============================================================
+// ATTENDANCE
+// ============================================================
+function showAttendance() { showScreen('attendance'); }
+
+function checkAttendance() {
+  if(app.attendanceChecked) return;
+  app.attendanceChecked = true;
+  document.getElementById('att-check-body').innerHTML = `
+    <div class="att-icon">✅</div>
+    <div class="att-title">출석 완료!</div>
+    <div class="att-sub">${app.name}님의 출석이 확인되었습니다</div>
+    <div style="margin-top:24px;padding:14px 20px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;font-size:14px;color:#065f46;font-weight:500">
+      📍 출석 시간: ${new Date().toLocaleTimeString('ko-KR', {hour:'2-digit',minute:'2-digit'})}
+    </div>
+  `;
+}
+</script>
+</body>
+</html>

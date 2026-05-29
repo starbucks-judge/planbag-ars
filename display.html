@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>플랜백 ARS — 결과 화면</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700;800;900&display=swap');
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#0d1117;--surface:#161b22;--border:#21262d;
+    --accent:#e94560;--accent2:#3b82f6;--success:#10b981;
+    --text:#f0f6fc;--muted:#8b949e;
+  }
+  html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Pretendard',sans-serif;overflow:hidden}
+  
+  /* SCREENS */
+  .dscreen{display:none;position:absolute;inset:0}
+  .dscreen.active{display:flex}
+
+  /* STANDBY */
+  .standby{background:radial-gradient(ellipse at 50% 100%, #0f3460 0%, #0d1117 60%);align-items:center;justify-content:center;flex-direction:column;text-align:center}
+  .standby-logo{font-size:72px;margin-bottom:32px;filter:drop-shadow(0 0 40px rgba(233,69,96,0.4))}
+  .standby-title{font-size:64px;font-weight:900;color:#fff;letter-spacing:-2px;margin-bottom:12px}
+  .standby-sub{font-size:24px;color:rgba(255,255,255,0.4);margin-bottom:48px}
+  .standby-code-wrap{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:24px;padding:28px 56px}
+  .standby-code-label{font-size:16px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:3px;margin-bottom:8px}
+  .standby-code{font-size:72px;font-weight:900;letter-spacing:16px;color:var(--accent)}
+  .standby-url{font-size:20px;color:rgba(255,255,255,0.35);margin-top:20px}
+  .standby-count{font-size:18px;color:rgba(255,255,255,0.5);margin-top:28px}
+  .standby-count span{color:#4ade80;font-weight:700}
+  
+  /* QUESTION DISPLAY */
+  .q-display{flex-direction:column;padding:48px 80px}
+  .q-display-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:40px}
+  .q-display-badge{display:flex;align-items:center;gap:10px;background:rgba(233,69,96,0.15);border:1px solid rgba(233,69,96,0.3);border-radius:20px;padding:8px 20px;font-size:16px;font-weight:700;color:var(--accent)}
+  .live-dot{width:10px;height:10px;border-radius:50%;background:var(--accent);animation:blink 1s infinite}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+  .q-display-count{font-size:18px;color:var(--muted)}
+  .q-display-count span{color:#fff;font-weight:700}
+  .q-display-time{font-size:48px;font-weight:900;color:var(--accent)}
+  
+  .q-display-text{font-size:52px;font-weight:800;color:#fff;line-height:1.25;margin-bottom:48px;flex:1}
+  
+  /* PROGRESS */
+  .response-progress{background:rgba(255,255,255,0.08);border-radius:12px;height:12px;overflow:hidden;margin-bottom:8px}
+  .response-progress-fill{height:100%;background:linear-gradient(90deg,var(--accent2),var(--accent));border-radius:12px;transition:width .5s ease}
+  .response-label{display:flex;justify-content:space-between;font-size:16px;color:var(--muted)}
+
+  /* MC RESULTS DISPLAY */
+  .mc-results{flex:1;display:flex;flex-direction:column;gap:14px}
+  .mc-result-item{display:flex;align-items:center;gap:20px;animation:slideIn .4s ease forwards;opacity:0}
+  @keyframes slideIn{from{opacity:0;transform:translateX(-20px)}to{opacity:1;transform:translateX(0)}}
+  .mc-letter-big{width:60px;height:60px;border-radius:16px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:var(--muted);flex-shrink:0}
+  .mc-letter-big.winner{background:rgba(16,185,129,0.2);border-color:rgba(16,185,129,0.4);color:#4ade80}
+  .mc-bar-wrap{flex:1}
+  .mc-bar-label{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .mc-bar-text{font-size:22px;font-weight:600;color:#fff}
+  .mc-bar-pct{font-size:28px;font-weight:800;color:var(--accent)}
+  .mc-bar-pct.winner-pct{color:#4ade80}
+  .mc-bar-bg{height:20px;background:rgba(255,255,255,0.06);border-radius:10px;overflow:hidden}
+  .mc-bar-fg{height:100%;border-radius:10px;transition:width .8s cubic-bezier(.4,0,.2,1)}
+  .mc-bar-fg.normal{background:rgba(59,130,246,0.6)}
+  .mc-bar-fg.winner-bar{background:linear-gradient(90deg,#059669,#10b981)}
+  .mc-bar-count{font-size:16px;color:var(--muted);margin-top:4px}
+
+  /* WORDCLOUD DISPLAY */
+  .wc-display{flex:1;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:12px;padding:20px}
+  .wc-word-big{font-weight:800;color:#fff;padding:6px 12px;border-radius:10px;transition:transform .2s}
+  .wc-word-big:nth-child(3n){color:var(--accent)}
+  .wc-word-big:nth-child(3n+1){color:var(--accent2)}
+  .wc-word-big:nth-child(3n+2){color:#4ade80}
+
+  /* OPEN TEXT */
+  .open-display{flex:1;display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;padding:8px 0;overflow:hidden}
+  .open-bubble{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:16px 20px;font-size:18px;color:rgba(255,255,255,0.85);line-height:1.5;animation:fadeUp .5s ease forwards;opacity:0}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+  /* UPFLOW DISPLAY */
+  .upflow-display{flex:1;display:flex;flex-direction:column;gap:14px}
+  .upflow-highlight{background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.3);border-radius:20px;padding:24px 32px;display:flex;align-items:flex-start;gap:20px}
+  .upflow-highlight.top{background:rgba(233,69,96,0.1);border-color:rgba(233,69,96,0.3)}
+  .upflow-highlight-vote{font-size:48px;font-weight:900;color:var(--accent2);text-align:center;min-width:60px}
+  .upflow-highlight.top .upflow-highlight-vote{color:var(--accent)}
+  .upflow-highlight-text{font-size:26px;font-weight:600;color:#fff;line-height:1.4;flex:1}
+
+  /* CONTROLS (hidden in presentation, shown for demo) */
+  .demo-controls{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);display:flex;gap:10px;z-index:100;background:rgba(0,0,0,0.7);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:12px 16px}
+  .ctrl-btn{padding:8px 18px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;border:none;font-family:inherit;transition:all .15s}
+  .ctrl-btn-ghost{background:rgba(255,255,255,0.1);color:#fff}
+  .ctrl-btn-ghost:hover{background:rgba(255,255,255,0.2)}
+  .ctrl-btn-accent{background:var(--accent);color:#fff}
+  .ctrl-btn-accent:hover{background:#d63b54}
+
+  /* TICKER */
+  .ticker{position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.8);border-top:1px solid rgba(255,255,255,0.08);padding:10px 24px;display:flex;align-items:center;gap:16px;font-size:14px}
+  .ticker-label{color:var(--accent);font-weight:700;white-space:nowrap}
+  .ticker-track{overflow:hidden;flex:1}
+  .ticker-content{display:flex;gap:48px;animation:scroll 30s linear infinite;width:max-content}
+  .ticker-item{color:rgba(255,255,255,0.6);white-space:nowrap}
+  @keyframes scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+</style>
+</head>
+<body>
+
+<!-- STANDBY SCREEN -->
+<div class="dscreen standby active" id="ds-standby">
+  <div class="standby-logo">🎯</div>
+  <div class="standby-title">Planbag ARS</div>
+  <div class="standby-sub">2025 HR 컨퍼런스</div>
+  <div class="standby-code-wrap">
+    <div class="standby-code-label">참여 코드</div>
+    <div class="standby-code">ABC123</div>
+    <div class="standby-url">go.planbag-ars.com</div>
+  </div>
+  <div class="standby-count">현재 <span id="standby-count">47</span>명 참여 중</div>
+</div>
+
+<!-- Q DISPLAY SCREEN -->
+<div class="dscreen q-display" id="ds-question">
+  <div class="q-display-header">
+    <div class="q-display-badge"><div class="live-dot"></div> LIVE 진행 중</div>
+    <div class="q-display-count">문항 <span id="ds-q-num">1</span> / <span id="ds-q-total">3</span></div>
+    <div class="q-display-time" id="ds-timer" style="display:none">30</div>
+  </div>
+
+  <div class="q-display-text" id="ds-q-text">오늘 세션에서 가장 기대되는 주제는 무엇인가요?</div>
+
+  <div id="ds-response-progress" style="margin-bottom:32px">
+    <div class="response-progress"><div class="response-progress-fill" id="ds-prog-fill" style="width:68%"></div></div>
+    <div class="response-label"><span id="ds-resp-count">32명 응답 중</span><span id="ds-resp-pct">68%</span></div>
+  </div>
+
+  <div id="ds-content">
+    <!-- dynamic -->
+  </div>
+</div>
+
+<!-- UPFLOW SCREEN -->
+<div class="dscreen q-display" id="ds-upflow">
+  <div class="q-display-header">
+    <div class="q-display-badge"><div class="live-dot"></div> 청중 질문</div>
+    <div style="color:var(--muted);font-size:18px">추천 순으로 표시</div>
+  </div>
+  <div class="q-display-text" style="font-size:38px">💬 청중 질문</div>
+  <div class="upflow-display">
+    <div class="upflow-highlight top">
+      <div class="upflow-highlight-vote">12</div>
+      <div class="upflow-highlight-text">오늘 발표에서 가장 중요한 메시지가 무엇인지 한 문장으로 요약해주실 수 있나요?</div>
+    </div>
+    <div class="upflow-highlight">
+      <div class="upflow-highlight-vote">8</div>
+      <div class="upflow-highlight-text">AI 도입 시 가장 큰 조직 내 저항은 무엇이라고 생각하시나요?</div>
+    </div>
+    <div class="upflow-highlight">
+      <div class="upflow-highlight-vote">5</div>
+      <div class="upflow-highlight-text">실제 적용 사례를 좀 더 구체적으로 말씀해주실 수 있을까요?</div>
+    </div>
+  </div>
+</div>
+
+<!-- DEMO CONTROLS -->
+<div class="demo-controls">
+  <button class="ctrl-btn ctrl-btn-ghost" onclick="showDScreen('standby')">🏠 대기화면</button>
+  <button class="ctrl-btn ctrl-btn-ghost" onclick="showMC()">📊 객관식 결과</button>
+  <button class="ctrl-btn ctrl-btn-ghost" onclick="showWord()">🌐 워드클라우드</button>
+  <button class="ctrl-btn ctrl-btn-ghost" onclick="showOpen()">📝 주관식</button>
+  <button class="ctrl-btn ctrl-btn-ghost" onclick="showDScreen('upflow')">💬 청중질문</button>
+</div>
+
+<!-- TICKER -->
+<div class="ticker">
+  <div class="ticker-label">LIVE</div>
+  <div class="ticker-track">
+    <div class="ticker-content">
+      <span class="ticker-item">✅ 홍길동님 출석 확인</span>
+      <span class="ticker-item">💬 새 질문 등록: "AI 도입 시 조직 저항은?"</span>
+      <span class="ticker-item">✅ 김철수님 출석 확인</span>
+      <span class="ticker-item">▲ 질문 추천 +3</span>
+      <span class="ticker-item">📊 47명 현재 참여 중</span>
+      <span class="ticker-item">✅ 이영희님 출석 확인</span>
+      <span class="ticker-item">💬 새 질문 등록: "실제 적용 사례는?"</span>
+      <span class="ticker-item">✅ 홍길동님 출석 확인</span>
+      <span class="ticker-item">💬 새 질문 등록: "AI 도입 시 조직 저항은?"</span>
+      <span class="ticker-item">✅ 김철수님 출석 확인</span>
+      <span class="ticker-item">▲ 질문 추천 +3</span>
+      <span class="ticker-item">📊 47명 현재 참여 중</span>
+    </div>
+  </div>
+</div>
+
+<script>
+function showDScreen(name) {
+  document.querySelectorAll('.dscreen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('ds-'+name).classList.add('active');
+}
+
+function showMC() {
+  showDScreen('question');
+  document.getElementById('ds-q-text').textContent = '오늘 세션에서 가장 기대되는 주제는 무엇인가요?';
+  const data = [
+    {text:'AI와 HR의 미래', votes:32, pct:42},
+    {text:'조직 문화 혁신', votes:24, pct:32},
+    {text:'데이터 기반 의사결정', votes:14, pct:19},
+    {text:'구성원 경험 설계', votes:5, pct:7},
+  ];
+  const maxVotes = Math.max(...data.map(d=>d.votes));
+  const letters = ['A','B','C','D'];
+  document.getElementById('ds-content').innerHTML = `<div class="mc-results">` +
+    data.map((d,i) => {
+      const isWinner = d.votes === maxVotes;
+      return `<div class="mc-result-item" style="animation-delay:${i*0.1}s">
+        <div class="mc-letter-big ${isWinner?'winner':''}">${letters[i]}</div>
+        <div class="mc-bar-wrap">
+          <div class="mc-bar-label">
+            <span class="mc-bar-text">${d.text}</span>
+            <span class="mc-bar-pct ${isWinner?'winner-pct':''}">${d.pct}%</span>
+          </div>
+          <div class="mc-bar-bg"><div class="mc-bar-fg ${isWinner?'winner-bar':'normal'}" style="width:0%" data-w="${d.pct}"></div></div>
+          <div class="mc-bar-count">${d.votes}명</div>
+        </div>
+      </div>`;
+    }).join('') + `</div>`;
+  setTimeout(() => document.querySelectorAll('.mc-bar-fg').forEach(el => el.style.width = el.dataset.w+'%'), 200);
+}
+
+function showWord() {
+  showDScreen('question');
+  document.getElementById('ds-q-text').textContent = '오늘 행사를 한 단어로 표현한다면?';
+  const words = [
+    {w:'혁신',s:72},{w:'소통',s:60},{w:'성장',s:54},{w:'변화',s:48},
+    {w:'협력',s:44},{w:'창의',s:40},{w:'도전',s:36},{w:'미래',s:34},
+    {w:'가치',s:30},{w:'팀워크',s:28},{w:'리더십',s:26},{w:'동기',s:24}
+  ];
+  document.getElementById('ds-content').innerHTML = `<div class="wc-display">` +
+    words.map(({w,s}) => `<span class="wc-word-big" style="font-size:${s}px">${w}</span>`).join('') + `</div>`;
+}
+
+function showOpen() {
+  showDScreen('question');
+  document.getElementById('ds-q-text').textContent = '이번 행사에서 얻고 싶은 인사이트는?';
+  const answers = [
+    'AI를 활용한 채용 프로세스 개선 방법','조직문화 변화를 이끄는 리더의 역할',
+    '데이터로 의사결정을 바꾸는 HR의 미래','직원 경험을 중심으로 한 제도 설계',
+    '세대 간 소통을 위한 실질적인 전략','HR이 비즈니스 파트너가 되는 방법'
+  ];
+  document.getElementById('ds-content').innerHTML = `<div class="open-display">` +
+    answers.map((a,i) => `<div class="open-bubble" style="animation-delay:${i*0.15}s">${a}</div>`).join('') + `</div>`;
+}
+</script>
+</body>
+</html>
