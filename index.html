@@ -338,7 +338,7 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
             <div class="access-url">go.planbag-ars.com</div>
             <div class="access-code" id="qr-code-display">——</div>
           </div>
-          <button class="btn btn-secondary" style="width:100%;margin-top:12px" onclick="printQR()">🖨️ QR 인쇄</button>
+          <button class="btn btn-secondary" style="width:100%;margin-top:12px" onclick="downloadQR()">⬇️ QR 이미지 다운로드 (PNG)</button>
         </div>
       </div>
     </div>
@@ -604,7 +604,30 @@ function genCode() {
   document.getElementById('sidebar-code').textContent = code;
 }
 
-function printQR() { window.print(); }
+function downloadQR() {
+  const code = document.getElementById('access-code-input').value || 'QRCODE';
+  const eventName = document.getElementById('event-name').value || 'planbag-ars';
+  const size = 400;
+  const url = `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=https://starbucks-judge.github.io/planbag-ars/audience.html?code=${code}`;
+
+  fetch(url)
+    .then(res => res.blob())
+    .then(blob => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `QR_${eventName}_${code}.png`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    })
+    .catch(() => {
+      // fetch 차단 시 직접 링크 다운로드
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `QR_${eventName}_${code}.png`;
+      a.target = '_blank';
+      a.click();
+    });
+}
 
 // ============================================================
 // QUESTION BUILDER
