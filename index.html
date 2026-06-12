@@ -282,7 +282,7 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
           <div class="form-row">
             <label>참여 코드 (6자리)</label>
             <div class="input-group">
-              <input type="text" id="access-code-input" placeholder="자동 생성" maxlength="6" style="letter-spacing:4px;font-weight:700;font-size:18px">
+              <input type="text" id="access-code-input" placeholder="자동 생성" maxlength="6" style="letter-spacing:4px;font-weight:700;font-size:18px" oninput="this.value=this.value.toUpperCase();updateQRImage(this.value);document.getElementById('qr-code-display').textContent=this.value||'——';document.getElementById('sidebar-code').textContent=this.value||'—'">
               <button class="btn btn-secondary" onclick="genCode()">생성</button>
             </div>
           </div>
@@ -307,32 +307,8 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
           <div class="card-title"><span class="dot"></span> QR 코드 미리보기</div>
           <div class="qr-preview">
             <div class="qr-box">
-              <div class="qr-code" id="qr-display">
-                <svg width="100" height="100" viewBox="0 0 100 100">
-                  <rect x="5" y="5" width="30" height="30" fill="none" stroke="#333" stroke-width="3"/>
-                  <rect x="12" y="12" width="16" height="16" fill="#333"/>
-                  <rect x="65" y="5" width="30" height="30" fill="none" stroke="#333" stroke-width="3"/>
-                  <rect x="72" y="12" width="16" height="16" fill="#333"/>
-                  <rect x="5" y="65" width="30" height="30" fill="none" stroke="#333" stroke-width="3"/>
-                  <rect x="12" y="72" width="16" height="16" fill="#333"/>
-                  <rect x="45" y="5" width="5" height="5" fill="#333"/>
-                  <rect x="55" y="5" width="5" height="5" fill="#333"/>
-                  <rect x="45" y="15" width="5" height="5" fill="#333"/>
-                  <rect x="5" y="45" width="5" height="5" fill="#333"/>
-                  <rect x="15" y="45" width="5" height="5" fill="#333"/>
-                  <rect x="45" y="45" width="5" height="5" fill="#333"/>
-                  <rect x="55" y="55" width="5" height="5" fill="#333"/>
-                  <rect x="65" y="45" width="5" height="5" fill="#333"/>
-                  <rect x="75" y="55" width="5" height="5" fill="#333"/>
-                  <rect x="85" y="45" width="5" height="5" fill="#333"/>
-                  <rect x="65" y="65" width="5" height="5" fill="#333"/>
-                  <rect x="75" y="75" width="5" height="5" fill="#333"/>
-                  <rect x="85" y="85" width="5" height="5" fill="#333"/>
-                  <rect x="45" y="75" width="5" height="5" fill="#333"/>
-                  <rect x="55" y="85" width="5" height="5" fill="#333"/>
-                  <rect x="45" y="85" width="5" height="5" fill="#333"/>
-                  <rect x="55" y="65" width="5" height="5" fill="#333"/>
-                </svg>
+              <div class="qr-code" id="qr-display" style="background:#fff;padding:0;border-radius:4px">
+                <img id="qr-img" src="" alt="QR코드" style="width:120px;height:120px;display:block;border-radius:4px">
               </div>
             </div>
             <div class="access-url">go.planbag-ars.com</div>
@@ -602,13 +578,22 @@ function genCode() {
   document.getElementById('access-code-input').value = code;
   document.getElementById('qr-code-display').textContent = code;
   document.getElementById('sidebar-code').textContent = code;
+  updateQRImage(code);
+}
+
+function updateQRImage(code) {
+  if (!code) return;
+  const targetUrl = encodeURIComponent('https://starbucks-judge.github.io/planbag-ars/audience.html?code=' + code);
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${targetUrl}`;
+  const img = document.getElementById('qr-img');
+  if (img) img.src = qrUrl;
 }
 
 function downloadQR() {
   const code = document.getElementById('access-code-input').value || 'QRCODE';
   const eventName = document.getElementById('event-name').value || 'planbag-ars';
-  const size = 400;
-  const url = `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=https://starbucks-judge.github.io/planbag-ars/audience.html?code=${code}`;
+  const targetUrl = encodeURIComponent('https://starbucks-judge.github.io/planbag-ars/audience.html?code=' + code);
+  const url = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${targetUrl}`;
 
   fetch(url)
     .then(res => res.blob())
@@ -620,7 +605,6 @@ function downloadQR() {
       URL.revokeObjectURL(a.href);
     })
     .catch(() => {
-      // fetch 차단 시 직접 링크 다운로드
       const a = document.createElement('a');
       a.href = url;
       a.download = `QR_${eventName}_${code}.png`;
