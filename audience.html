@@ -323,7 +323,7 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // ============================================================
 const app = {
   code: '', name: '참여자', isAnon: false, attendanceChecked: false,
-  sessionId: null, sessionData: null,
+  sessionId: null, sessionData: null, accessLogged: false,
   currentQ: 0, answered: false, timerInterval: null,
   questions: [],
   upflows: []
@@ -420,10 +420,19 @@ function showScreen(name) {
 }
 
 function enterHome() {
-  document.getElementById('home-event-name').textContent = '2025 HR 컨퍼런스';
+  document.getElementById('home-event-name').textContent = app.sessionData?.event_name || '행사명';
   document.getElementById('home-participant-name').textContent = app.name + '님 환영합니다 👋';
   document.getElementById('att-check-name').textContent = app.name + '님, 안녕하세요!';
   showScreen('home');
+  // 접속 기록 → 관리자 실시간 참여자 수 반영
+  if (app.sessionId && !app.accessLogged) {
+    app.accessLogged = true;
+    sb.from('attendance').insert({
+      session_id: app.sessionId,
+      participant_name: app.name,
+      checked_at: null
+    }).then(() => {});
+  }
 }
 
 function goHome() { showScreen('home'); }
@@ -657,7 +666,7 @@ async function renderAskList() {
         <div class="qlist-vote-num">${u.votes}</div>
         <div class="qlist-vote-label">추천</div>
         <button class="qlist-vote-btn ${u.voted?'voted':''}" onclick="voteQuestion('${u.id}')">
-          ${u.voted ? '✓' : '▲'}
+          ${u.voted ? '▼ 취소' : '▲ 추천'}
         </button>
       </div>
       <div class="qlist-text">${u.text}</div>
@@ -678,8 +687,10 @@ async function voteQuestion(id) {
   if(!u) return;
   if(u.voted) {
     await sb.from('upflows').update({ vote_count: Math.max(0, u.votes-1) }).eq('id', id);
+    u.voted = false;
   } else {
     await sb.from('upflows').update({ vote_count: u.votes+1 }).eq('id', id);
+    u.voted = true;
   }
   await renderAskList();
 }
@@ -693,11 +704,18 @@ async function checkAttendance() {
   if(app.attendanceChecked) return;
   app.attendanceChecked = true;
   if (app.sessionId) {
-    await sb.from('attendance').insert({
-      session_id: app.sessionId,
-      participant_name: app.name,
-      checked_at: new Date().toISOString()
-    });
+    // 접속 시 이미 INSERT된 레코드에 checked_at 업데이트
+    const { data: existing } = await sb.from('attendance')
+      .select('id').eq('session_id', app.sessionId)
+      .eq('participant_name', app.name).is('checked_at', null).single();
+    if (existing) {
+      await sb.from('attendance').update({ checked_at: new Date().toISOString() }).eq('id', existing.id);
+    } else {
+      await sb.from('attendance').insert({
+        session_id: app.sessionId, participant_name: app.name,
+        checked_at: new Date().toISOString()
+      });
+    }
   }
   document.getElementById('att-check-body').innerHTML = `
     <div class="att-icon">✅</div>

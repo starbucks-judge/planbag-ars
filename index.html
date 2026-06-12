@@ -4,527 +4,466 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>플랜백 ARS — 관리자</title>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700&display=swap');
-  *{box-sizing:border-box;margin:0;padding:0}
-  :root{
-    --primary:#1a1a2e;--accent:#e94560;--accent2:#0f3460;
-    --bg:#f4f5f7;--surface:#ffffff;--border:#e2e4e9;
-    --text:#1a1a2e;--muted:#6b7280;--success:#10b981;--warning:#f59e0b;
-    --sidebar:240px;
-  }
-  body{font-family:'Pretendard',sans-serif;background:var(--bg);color:var(--text);display:flex;min-height:100vh;font-size:14px}
-  
-  /* SIDEBAR */
-  .sidebar{width:var(--sidebar);background:var(--primary);color:#fff;display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:100}
-  .sidebar-logo{padding:24px 20px 20px;border-bottom:1px solid rgba(255,255,255,0.1)}
-  .sidebar-logo .brand{font-size:18px;font-weight:700;color:#fff;letter-spacing:-0.5px}
-  .sidebar-logo .sub{font-size:11px;color:rgba(255,255,255,0.45);margin-top:2px;letter-spacing:1px;text-transform:uppercase}
-  .sidebar-nav{padding:16px 12px;flex:1;overflow-y:auto}
-  .nav-section{font-size:10px;font-weight:600;color:rgba(255,255,255,0.35);letter-spacing:1.2px;text-transform:uppercase;padding:8px 8px 6px;margin-top:12px}
-  .nav-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;cursor:pointer;color:rgba(255,255,255,0.65);font-size:13px;font-weight:500;transition:all .15s;margin-bottom:2px}
-  .nav-item:hover{background:rgba(255,255,255,0.08);color:#fff}
-  .nav-item.active{background:var(--accent);color:#fff}
-  .nav-item .icon{font-size:16px;width:20px;text-align:center}
-  .sidebar-session{padding:16px;border-top:1px solid rgba(255,255,255,0.1)}
-  .session-badge{background:rgba(233,69,96,0.2);border:1px solid rgba(233,69,96,0.4);border-radius:20px;padding:6px 12px;font-size:12px;color:#f87197;font-weight:600;text-align:center}
-  .session-code{font-size:24px;font-weight:700;color:#fff;text-align:center;letter-spacing:4px;margin:8px 0 4px}
-  .session-label{font-size:11px;color:rgba(255,255,255,0.4);text-align:center}
-
-  /* MAIN */
-  .main{margin-left:var(--sidebar);flex:1;display:flex;flex-direction:column}
-  .topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 28px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
-  .topbar-title{font-size:16px;font-weight:700;color:var(--text)}
-  .topbar-title span{color:var(--accent)}
-  .topbar-actions{display:flex;align-items:center;gap:12px}
-  .btn{display:inline-flex;align-items:center;gap:6px;padding:7px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .15s;font-family:inherit}
-  .btn-primary{background:var(--accent);color:#fff}
-  .btn-primary:hover{background:#d63b54}
-  .btn-secondary{background:transparent;color:var(--text);border:1px solid var(--border)}
-  .btn-secondary:hover{background:var(--bg)}
-  .btn-success{background:var(--success);color:#fff}
-  .btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border)}
-  .btn-ghost:hover{background:var(--bg);color:var(--text)}
-  .btn-danger{background:#fee2e2;color:#dc2626;border:1px solid #fecaca}
-  .btn-danger:hover{background:#fecaca}
-  .btn-sm{padding:5px 12px;font-size:12px}
-
-  .content{padding:28px;flex:1}
-
-  /* TAB PANEL */
-  .tab-panel{display:none}
-  .tab-panel.active{display:block}
-
-  /* SESSION SETUP */
-  .setup-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;max-width:800px}
-  .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:22px}
-  .card-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:16px;display:flex;align-items:center;gap:8px}
-  .card-title .dot{width:8px;height:8px;border-radius:50%;background:var(--accent)}
-  label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px}
-  input[type=text],input[type=number],select,textarea{width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;color:var(--text);background:var(--bg);outline:none;transition:border .15s}
-  input:focus,select:focus,textarea:focus{border-color:var(--accent);background:#fff}
-  textarea{resize:vertical;min-height:80px}
-  .form-row{margin-bottom:16px}
-  .form-row:last-child{margin-bottom:0}
-  .input-group{display:flex;gap:8px}
-  .input-group input{flex:1}
-
-  /* QUESTION BUILDER */
-  .qbuilder-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
-  .qtype-tabs{display:flex;background:var(--bg);border-radius:10px;padding:3px;gap:2px}
-  .qtype-tab{padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;color:var(--muted);transition:all .15s}
-  .qtype-tab.active{background:var(--surface);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,0.08)}
-  .question-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:12px;overflow:hidden}
-  .q-header{display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--border)}
-  .q-num{width:28px;height:28px;border-radius:50%;background:var(--accent);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-  .q-type-badge{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:#eff6ff;color:#3b82f6}
-  .q-type-badge.open{background:#f0fdf4;color:#16a34a}
-  .q-type-badge.word{background:#fdf4ff;color:#9333ea}
-  .q-title-input{flex:1;border:none;background:transparent;font-size:14px;font-weight:600;color:var(--text);font-family:inherit;outline:none}
-  .q-actions{display:flex;gap:6px;margin-left:auto}
-  .q-body{padding:14px 18px}
-  .options-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
-  .option-item{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg);border-radius:8px;border:1px solid var(--border)}
-  .option-letter{width:22px;height:22px;border-radius:6px;background:var(--accent2);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-  .option-input{flex:1;border:none;background:transparent;font-size:13px;font-family:inherit;outline:none;color:var(--text)}
-  .option-del{color:var(--muted);cursor:pointer;font-size:14px;flex-shrink:0;background:none;border:none;padding:2px}
-  .option-del:hover{color:var(--accent)}
-  .add-option-btn{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;background:none;border:1px dashed var(--border);border-radius:8px;padding:7px 14px;width:100%;justify-content:center;transition:all .15s;font-family:inherit}
-  .add-option-btn:hover{border-color:var(--accent);color:var(--accent);background:#fff5f6}
-  .q-settings{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
-  .setting-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);font-weight:500}
-  .toggle{width:32px;height:18px;background:#d1d5db;border-radius:9px;cursor:pointer;position:relative;transition:background .15s;flex-shrink:0}
-  .toggle.on{background:var(--accent)}
-  .toggle::after{content:'';position:absolute;width:14px;height:14px;background:#fff;border-radius:50%;top:2px;left:2px;transition:transform .15s}
-  .toggle.on::after{transform:translateX(14px)}
-  .time-input{width:60px;padding:4px 8px;font-size:12px;text-align:center}
-
-  /* LIVE PANEL */
-  .live-grid{display:grid;grid-template-columns:1fr 360px;gap:20px}
-  .live-status-bar{background:linear-gradient(135deg,var(--accent2),#1e4d8c);color:#fff;border-radius:12px;padding:18px 22px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between}
-  .live-indicator{display:flex;align-items:center;gap:8px}
-  .pulse{width:10px;height:10px;border-radius:50%;background:#4ade80;animation:pulse 1.5s infinite}
-  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.6;transform:scale(1.2)}}
-  .live-info{font-size:13px;color:rgba(255,255,255,0.8)}
-  .live-count{font-size:28px;font-weight:700;color:#fff}
-  .live-count-label{font-size:11px;color:rgba(255,255,255,0.6)}
-  .current-q-card{background:var(--surface);border:2px solid var(--accent);border-radius:12px;padding:20px;margin-bottom:16px}
-  .current-q-label{font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
-  .current-q-text{font-size:16px;font-weight:600;color:var(--text);margin-bottom:16px}
-  .progress-bar-wrap{background:var(--bg);border-radius:8px;height:8px;overflow:hidden;margin-bottom:6px}
-  .progress-bar-fill{height:100%;background:var(--accent);border-radius:8px;transition:width .3s}
-  .progress-label{display:flex;justify-content:space-between;font-size:11px;color:var(--muted)}
-  .results-bars{margin-top:16px}
-  .result-item{margin-bottom:10px}
-  .result-label{display:flex;justify-content:space-between;font-size:12px;font-weight:600;color:var(--text);margin-bottom:4px}
-  .result-bar-wrap{background:var(--bg);border-radius:4px;height:24px;overflow:hidden}
-  .result-bar-fill{height:100%;background:var(--accent2);border-radius:4px;transition:width .5s ease;display:flex;align-items:center;padding-left:8px}
-  .result-bar-fill span{font-size:11px;color:#fff;font-weight:600}
-
-  /* QUESTIONS LIST PANEL */
-  .q-list-panel{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden}
-  .q-list-header{padding:14px 18px;border-bottom:1px solid var(--border);background:var(--bg);font-size:13px;font-weight:700;color:var(--text)}
-  .q-list-item{display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s}
-  .q-list-item:hover{background:var(--bg)}
-  .q-list-item.active-q{background:#fff5f6;border-left:3px solid var(--accent)}
-  .q-list-item.done{opacity:.5}
-  .q-list-num{font-size:11px;font-weight:700;color:var(--muted);width:20px}
-  .q-list-text{flex:1;font-size:13px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .q-list-status{font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px}
-  .status-waiting{background:#f3f4f6;color:#6b7280}
-  .status-live{background:#fef2f2;color:#dc2626;animation:pulse-text 1.5s infinite}
-  .status-done{background:#f0fdf4;color:#16a34a}
-  @keyframes pulse-text{0%,100%{opacity:1}50%{opacity:.7}}
-
-  /* UPFLOW PANEL */
-  .upflow-item{display:flex;gap:12px;padding:14px 18px;border-bottom:1px solid var(--border)}
-  .upflow-votes{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:32px}
-  .vote-count{font-size:18px;font-weight:700;color:var(--accent)}
-  .vote-label{font-size:9px;color:var(--muted);text-transform:uppercase;font-weight:600}
-  .upflow-content{flex:1}
-  .upflow-text{font-size:14px;color:var(--text);line-height:1.5;margin-bottom:6px}
-  .upflow-meta{font-size:11px;color:var(--muted)}
-  .upflow-actions{display:flex;gap:6px;margin-top:6px}
-
-  /* ATTENDANCE */
-  .attendance-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px}
-  .attendee-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center;transition:all .15s}
-  .attendee-card.checked{border-color:var(--success);background:#f0fdf4}
-  .attendee-avatar{width:44px;height:44px;border-radius:50%;background:var(--accent2);color:#fff;font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center;margin:0 auto 8px}
-  .attendee-name{font-size:12px;font-weight:600;color:var(--text)}
-  .attendee-status{font-size:10px;color:var(--muted);margin-top:2px}
-  .attendee-card.checked .attendee-status{color:var(--success)}
-
-  /* STATS */
-  .stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
-  .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;text-align:center}
-  .stat-number{font-size:32px;font-weight:700;color:var(--text);line-height:1}
-  .stat-number.accent{color:var(--accent)}
-  .stat-label{font-size:12px;color:var(--muted);margin-top:4px;font-weight:500}
-
-  /* MODAL */
-  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;align-items:center;justify-content:center}
-  .modal-overlay.open{display:flex}
-  .modal{background:var(--surface);border-radius:16px;padding:28px;width:520px;max-width:90vw;max-height:80vh;overflow-y:auto}
-  .modal-title{font-size:18px;font-weight:700;margin-bottom:20px;color:var(--text)}
-  .modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:24px;padding-top:16px;border-top:1px solid var(--border)}
-
-  /* EMPTY STATE */
-  .empty{text-align:center;padding:60px 20px;color:var(--muted)}
-  .empty-icon{font-size:48px;margin-bottom:12px;opacity:.3}
-  .empty-title{font-size:16px;font-weight:600;margin-bottom:6px;color:var(--text)}
-  .empty-sub{font-size:13px}
-
-  /* QR PREVIEW */
-  .qr-preview{background:var(--primary);border-radius:12px;padding:20px;text-align:center;color:#fff}
-  .qr-box{background:#fff;border-radius:8px;padding:12px;display:inline-block;margin-bottom:12px}
-  .qr-code{width:120px;height:120px;background:#f0f0f0;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:11px;color:#999}
-  .access-url{font-size:13px;color:rgba(255,255,255,0.7);margin-bottom:6px}
-  .access-code{font-size:32px;font-weight:700;letter-spacing:6px;color:#fff}
-
-  .divider{height:1px;background:var(--border);margin:20px 0}
-  .badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600}
-  .badge-blue{background:#eff6ff;color:#3b82f6}
-  .badge-green{background:#f0fdf4;color:#16a34a}
-  .badge-red{background:#fef2f2;color:#dc2626}
-  .badge-purple{background:#fdf4ff;color:#9333ea}
-
-  ::-webkit-scrollbar{width:5px;height:5px}
-  ::-webkit-scrollbar-track{background:transparent}
-  ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
-</style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const SUPABASE_URL = "https://fogpqsojmhlhmlkmjrrw.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZvZ3Bxc29qbWhsaG1sa21qcnJ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMjg3OTAsImV4cCI6MjA5NTYwNDc5MH0.DYSjshv6tOHi8AUrSurgJd8obbTvWodmFrKDdUfDtbQ";
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 </script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --primary:#1a1a2e;--accent:#e94560;--accent2:#0f3460;
+  --bg:#f4f5f7;--surface:#fff;--border:#e2e4e9;
+  --text:#1a1a2e;--muted:#6b7280;--success:#10b981;
+  --sidebar:240px;
+}
+body{font-family:'Pretendard',sans-serif;background:var(--bg);color:var(--text);font-size:14px}
+/* SIDEBAR */
+.sidebar{width:var(--sidebar);background:var(--primary);color:#fff;display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:100;transition:transform .2s}
+.sidebar-logo{padding:22px 20px 16px;border-bottom:1px solid rgba(255,255,255,0.1)}
+.sidebar-logo .brand{font-size:17px;font-weight:700;color:#fff}
+.sidebar-logo .sub{font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px;letter-spacing:1px;text-transform:uppercase}
+.sidebar-nav{padding:12px;flex:1;overflow-y:auto}
+.nav-section{font-size:10px;font-weight:600;color:rgba(255,255,255,0.3);letter-spacing:1.2px;text-transform:uppercase;padding:8px 8px 4px;margin-top:10px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;cursor:pointer;color:rgba(255,255,255,0.6);font-size:13px;font-weight:500;transition:all .15s;margin-bottom:2px;border:none;background:none;width:100%;text-align:left;font-family:inherit}
+.nav-item:hover{background:rgba(255,255,255,0.08);color:#fff}
+.nav-item.active{background:var(--accent);color:#fff}
+.nav-item .icon{font-size:15px;width:20px;text-align:center}
+.sidebar-session{padding:14px;border-top:1px solid rgba(255,255,255,0.1)}
+.session-badge{background:rgba(233,69,96,0.2);border:1px solid rgba(233,69,96,0.4);border-radius:20px;padding:5px 10px;font-size:11px;color:#f87197;font-weight:600;text-align:center}
+.session-code{font-size:22px;font-weight:700;color:#fff;text-align:center;letter-spacing:4px;margin:6px 0 2px}
+.session-label{font-size:10px;color:rgba(255,255,255,0.35);text-align:center}
+/* MAIN */
+.main{margin-left:var(--sidebar);display:flex;flex-direction:column;min-height:100vh}
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
+.topbar-left{display:flex;align-items:center;gap:8px}
+.topbar-title{font-size:15px;font-weight:700}
+.topbar-event{font-size:13px;color:var(--accent);font-weight:600}
+.topbar-actions{display:flex;align-items:center;gap:10px}
+.live-participant-badge{display:flex;align-items:center;gap:6px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:20px;padding:5px 12px;font-size:13px;font-weight:700;color:#059669}
+.live-dot{width:7px;height:7px;border-radius:50%;background:#10b981;animation:blink 1.2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .15s;font-family:inherit}
+.btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{background:#d63b54}
+.btn-secondary{background:transparent;color:var(--text);border:1px solid var(--border)}.btn-secondary:hover{background:var(--bg)}
+.btn-success{background:var(--success);color:#fff}
+.btn-danger{background:#fee2e2;color:#dc2626;border:1px solid #fecaca}.btn-danger:hover{background:#fecaca}
+.btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border)}.btn-ghost:hover{background:var(--bg)}
+.btn-sm{padding:5px 10px;font-size:12px}
+.btn-blue{background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe}.btn-blue:hover{background:#dbeafe}
+.content{padding:24px;flex:1}
+/* SCREENS */
+.screen{display:none}.screen.active{display:block}
+/* EVENT LIST */
+.events-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.events-header h2{font-size:18px;font-weight:700}
+.event-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px}
+.event-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;cursor:pointer;transition:all .15s;position:relative}
+.event-card:hover{border-color:var(--accent);box-shadow:0 4px 16px rgba(233,69,96,0.1)}
+.event-card-status{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;margin-bottom:10px}
+.status-live{background:#fef2f2;color:#dc2626}
+.status-ready{background:#eff6ff;color:#2563eb}
+.status-done{background:#f3f4f6;color:#6b7280}
+.event-card-name{font-size:16px;font-weight:700;margin-bottom:4px}
+.event-card-org{font-size:13px;color:var(--muted);margin-bottom:8px}
+.event-card-meta{display:flex;gap:12px;font-size:12px;color:var(--muted)}
+.event-card-actions{display:flex;gap:6px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)}
+.empty-events{text-align:center;padding:80px 20px;color:var(--muted)}
+.empty-events .icon{font-size:56px;margin-bottom:16px;opacity:.3}
+.empty-events h3{font-size:18px;font-weight:600;color:var(--text);margin-bottom:6px}
+/* CARD */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px}
+.card-title{font-size:14px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.card-title .dot{width:7px;height:7px;border-radius:50%;background:var(--accent)}
+/* FORM */
+label{display:block;font-size:11px;font-weight:600;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px}
+input[type=text],input[type=number],input[type=date],select,textarea{width:100%;padding:9px 11px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;color:var(--text);background:var(--bg);outline:none;transition:border .15s}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);background:#fff}
+textarea{resize:vertical;min-height:80px}
+.form-row{margin-bottom:14px}
+.form-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+/* TAB PANEL */
+.tab-panel{display:none}.tab-panel.active{display:block}
+/* AUDIENCE LINK BOX */
+.audience-link-box{background:var(--primary);border-radius:12px;padding:18px;color:#fff;display:grid;grid-template-columns:1fr auto;gap:16px;align-items:center}
+.audience-link-left{}
+.audience-link-label{font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+.audience-link-url{font-size:13px;color:rgba(255,255,255,0.8);word-break:break-all;margin-bottom:8px}
+.audience-link-code{font-size:28px;font-weight:800;letter-spacing:6px;color:var(--accent)}
+.audience-qr-box{background:#fff;border-radius:10px;padding:8px;text-align:center}
+.audience-qr-box img{width:100px;height:100px;display:block;border-radius:4px}
+.audience-qr-box .qr-sub{font-size:10px;color:var(--muted);margin-top:4px;font-weight:600}
+/* QUESTIONS */
+.qbuilder-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.question-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:10px;overflow:hidden}
+.q-header{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--border)}
+.q-num{width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.q-type-badge{font-size:11px;font-weight:600;padding:3px 8px;border-radius:20px;background:#eff6ff;color:#3b82f6}
+.q-type-badge.open{background:#f0fdf4;color:#16a34a}
+.q-type-badge.word{background:#fdf4ff;color:#9333ea}
+.q-title-input{flex:1;border:none;background:transparent;font-size:14px;font-weight:600;color:var(--text);font-family:inherit;outline:none}
+.q-actions{display:flex;gap:4px;margin-left:auto}
+.q-body{padding:12px 16px}
+.options-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px}
+.option-item{display:flex;align-items:center;gap:6px;padding:7px 10px;background:var(--bg);border-radius:8px;border:1px solid var(--border)}
+.option-letter{width:20px;height:20px;border-radius:5px;background:var(--accent2);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.option-input{flex:1;border:none;background:transparent;font-size:13px;font-family:inherit;outline:none;color:var(--text)}
+.option-del{color:var(--muted);cursor:pointer;font-size:12px;background:none;border:none;padding:2px}
+.add-option-btn{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;background:none;border:1px dashed var(--border);border-radius:8px;padding:6px 12px;width:100%;justify-content:center;transition:all .15s;font-family:inherit}
+.add-option-btn:hover{border-color:var(--accent);color:var(--accent)}
+.q-settings{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding-top:10px;border-top:1px solid var(--border);margin-top:10px}
+.setting-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.toggle{width:30px;height:17px;background:#d1d5db;border-radius:9px;cursor:pointer;position:relative;transition:background .15s;flex-shrink:0}
+.toggle.on{background:var(--accent)}
+.toggle::after{content:'';position:absolute;width:13px;height:13px;background:#fff;border-radius:50%;top:2px;left:2px;transition:transform .15s}
+.toggle.on::after{transform:translateX(13px)}
+.time-input{width:55px;padding:3px 6px;font-size:12px;text-align:center}
+/* LIVE */
+.live-status-bar{background:linear-gradient(135deg,var(--accent2),#1e4d8c);color:#fff;border-radius:12px;padding:16px 20px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between}
+.pulse{width:9px;height:9px;border-radius:50%;background:#4ade80;animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.6;transform:scale(1.2)}}
+.live-grid{display:grid;grid-template-columns:1fr 320px;gap:18px}
+.current-q-card{background:var(--surface);border:2px solid var(--accent);border-radius:12px;padding:18px;margin-bottom:14px}
+.current-q-label{font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+.current-q-text{font-size:15px;font-weight:600;margin-bottom:14px}
+.progress-bar-wrap{background:var(--bg);border-radius:8px;height:8px;overflow:hidden;margin-bottom:5px}
+.progress-bar-fill{height:100%;background:var(--accent);border-radius:8px;transition:width .3s}
+.progress-label{display:flex;justify-content:space-between;font-size:11px;color:var(--muted)}
+.results-bars{margin-top:14px}
+.result-item{margin-bottom:8px}
+.result-label{display:flex;justify-content:space-between;font-size:12px;font-weight:600;margin-bottom:3px}
+.result-bar-wrap{background:var(--bg);border-radius:4px;height:22px;overflow:hidden}
+.result-bar-fill{height:100%;background:var(--accent2);border-radius:4px;transition:width .5s ease;display:flex;align-items:center;padding-left:6px}
+.result-bar-fill span{font-size:10px;color:#fff;font-weight:600}
+.q-list-panel{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.q-list-header{padding:12px 16px;border-bottom:1px solid var(--border);background:var(--bg);font-size:13px;font-weight:700}
+.q-list-item{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s}
+.q-list-item:hover{background:var(--bg)}
+.q-list-item.active-q{background:#fff5f6;border-left:3px solid var(--accent)}
+.q-list-item.done{opacity:.5}
+.q-list-num{font-size:11px;font-weight:700;color:var(--muted);width:18px}
+.q-list-text{flex:1;font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.q-list-status{font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px}
+.status-waiting{background:#f3f4f6;color:#6b7280}
+.status-live{background:#fef2f2;color:#dc2626}
+.status-done{background:#f0fdf4;color:#16a34a}
+/* UPFLOW */
+.upflow-item{display:flex;gap:10px;padding:12px 16px;border-bottom:1px solid var(--border)}
+.upflow-votes{display:flex;flex-direction:column;align-items:center;gap:1px;min-width:30px}
+.vote-count{font-size:16px;font-weight:700;color:var(--accent)}
+.vote-label{font-size:9px;color:var(--muted);text-transform:uppercase;font-weight:600}
+.upflow-text{font-size:14px;color:var(--text);line-height:1.5;margin-bottom:5px}
+.upflow-meta{font-size:11px;color:var(--muted)}
+.upflow-actions{display:flex;gap:5px;margin-top:5px}
+/* ATTENDANCE */
+.attendance-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px}
+.attendee-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px;text-align:center;transition:all .15s;cursor:pointer}
+.attendee-card.checked{border-color:var(--success);background:#f0fdf4}
+.attendee-avatar{width:40px;height:40px;border-radius:50%;background:var(--accent2);color:#fff;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;margin:0 auto 6px}
+.attendee-card.checked .attendee-avatar{background:var(--success)}
+.attendee-name{font-size:12px;font-weight:600}
+.attendee-status{font-size:10px;color:var(--muted);margin-top:1px}
+.attendee-card.checked .attendee-status{color:var(--success)}
+/* STATS */
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center}
+.stat-number{font-size:28px;font-weight:700;line-height:1}
+.stat-number.accent{color:var(--accent)}
+.stat-label{font-size:11px;color:var(--muted);margin-top:3px;font-weight:500}
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:var(--surface);border-radius:16px;padding:26px;width:500px;max-width:90vw;max-height:85vh;overflow-y:auto}
+.modal-title{font-size:17px;font-weight:700;margin-bottom:18px}
+.modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:20px;padding-top:14px;border-top:1px solid var(--border)}
+/* EMPTY */
+.empty{text-align:center;padding:48px 20px;color:var(--muted)}
+.empty-icon{font-size:40px;margin-bottom:10px;opacity:.3}
+.empty-title{font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px}
+.empty-sub{font-size:13px}
+.divider{height:1px;background:var(--border);margin:16px 0}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600}
+.badge-blue{background:#eff6ff;color:#3b82f6}
+.badge-green{background:#f0fdf4;color:#16a34a}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+</style>
 </head>
 <body>
-
-<!-- SIDEBAR -->
-<aside class="sidebar">
+<aside class="sidebar" id="sidebar">
   <div class="sidebar-logo">
     <div class="brand">Planbag ARS</div>
     <div class="sub">Admin Console</div>
   </div>
-  <nav class="sidebar-nav">
-    <div class="nav-section">행사 설정</div>
-    <div class="nav-item active" onclick="switchTab('setup',this)">
-      <span class="icon">⚙️</span> 행사 세팅
-    </div>
-    <div class="nav-item" onclick="switchTab('questions',this)">
-      <span class="icon">📝</span> 문항 관리
-    </div>
-    <div class="nav-section">실시간 운영</div>
-    <div class="nav-item" onclick="switchTab('live',this)">
-      <span class="icon">🔴</span> 라이브 진행
-    </div>
-    <div class="nav-item" onclick="switchTab('upflow',this)">
-      <span class="icon">💬</span> 청중 질문
-    </div>
-    <div class="nav-item" onclick="switchTab('attendance',this)">
-      <span class="icon">✅</span> 출석 현황
-    </div>
-    <div class="nav-section">데이터</div>
-    <div class="nav-item" onclick="switchTab('results',this)">
-      <span class="icon">📊</span> 결과 분석
+  <nav class="sidebar-nav" id="sidebar-nav">
+    <div class="nav-section">행사</div>
+    <button class="nav-item active" id="nav-events" onclick="goEventList()">
+      <span class="icon">🏠</span> 행사 목록
+    </button>
+    <div id="event-nav-items" style="display:none">
+      <div class="nav-section">운영</div>
+      <button class="nav-item" onclick="switchTab('setup',this)"><span class="icon">⚙️</span> 행사 세팅</button>
+      <button class="nav-item" onclick="switchTab('questions',this)"><span class="icon">📝</span> 문항 관리</button>
+      <div class="nav-section">실시간</div>
+      <button class="nav-item" onclick="switchTab('live',this)"><span class="icon">🔴</span> 라이브 진행</button>
+      <button class="nav-item" onclick="switchTab('upflow',this)"><span class="icon">💬</span> 청중 질문</button>
+      <button class="nav-item" onclick="switchTab('attendance',this)"><span class="icon">✅</span> 출석 현황</button>
+      <div class="nav-section">데이터</div>
+      <button class="nav-item" onclick="switchTab('results',this)"><span class="icon">📊</span> 결과 분석</button>
     </div>
   </nav>
-  <div class="sidebar-session">
+  <div class="sidebar-session" id="sidebar-session" style="display:none">
     <div class="session-badge" id="session-status-badge">● 세션 없음</div>
     <div class="session-code" id="sidebar-code">—</div>
     <div class="session-label">참여 코드</div>
   </div>
 </aside>
 
-<!-- MAIN -->
 <main class="main">
   <header class="topbar">
-    <div class="topbar-title" id="topbar-title">행사 세팅 <span id="topbar-event-name"></span></div>
+    <div class="topbar-left">
+      <div class="topbar-title" id="topbar-title">행사 목록</div>
+      <div class="topbar-event" id="topbar-event"></div>
+    </div>
     <div class="topbar-actions">
-      <div id="live-controls" style="display:none;align-items:center;gap:10px">
-        <span id="live-attendee-count" style="font-size:13px;font-weight:600;color:var(--muted)">참여자 0명</span>
+      <div id="live-participant-wrap" style="display:none">
+        <div class="live-participant-badge">
+          <div class="live-dot"></div>
+          <span id="participant-count">0</span>명 참여 중
+        </div>
+      </div>
+      <div id="live-controls" style="display:none;align-items:center;gap:8px">
         <button class="btn btn-danger btn-sm" onclick="endSession()">세션 종료</button>
       </div>
-      <button class="btn btn-primary" id="start-session-btn" onclick="openStartModal()">▶ 세션 시작</button>
+      <button class="btn btn-primary btn-sm" id="start-session-btn" style="display:none" onclick="openStartModal()">▶ 세션 시작</button>
     </div>
   </header>
 
   <div class="content">
+    <!-- 행사 목록 -->
+    <div class="screen active" id="screen-events">
+      <div class="events-header">
+        <h2>행사 목록</h2>
+        <button class="btn btn-primary" onclick="openCreateEventModal()">＋ 행사 만들기</button>
+      </div>
+      <div class="event-cards" id="event-cards">
+        <div class="empty-events" style="grid-column:1/-1">
+          <div class="icon">🎯</div>
+          <h3>등록된 행사가 없습니다</h3>
+          <p>행사 만들기 버튼으로 첫 행사를 등록해보세요</p>
+        </div>
+      </div>
+    </div>
 
-    <!-- TAB: SETUP -->
-    <div class="tab-panel active" id="tab-setup">
-      <div class="setup-grid">
-        <div class="card" style="grid-column:1/-1">
-          <div class="card-title"><span class="dot"></span> 행사 기본 정보</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-            <div class="form-row">
-              <label>행사명</label>
-              <input type="text" id="event-name" placeholder="예: 2025 HR 컨퍼런스" oninput="updateEventName()">
+    <!-- 행사 운영 -->
+    <div class="screen" id="screen-event">
+      <!-- 행사 세팅 -->
+      <div class="tab-panel active" id="tab-setup">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
+          <div class="card" style="grid-column:1/-1">
+            <div class="card-title"><span class="dot"></span>행사 기본 정보</div>
+            <div class="form-grid-2">
+              <div class="form-row"><label>행사명</label><input type="text" id="ev-name" oninput="updateTopbar()"></div>
+              <div class="form-row"><label>주최 기관</label><input type="text" id="ev-org"></div>
+              <div class="form-row"><label>행사 일정</label><input type="date" id="ev-date"></div>
+              <div class="form-row"><label>예상 참여 인원</label><input type="number" id="ev-capacity" min="1"></div>
             </div>
-            <div class="form-row">
-              <label>주최 기관</label>
-              <input type="text" id="event-org" placeholder="예: 플랜백">
-            </div>
-            <div class="form-row">
-              <label>행사 날짜</label>
-              <input type="text" id="event-date" placeholder="2025-06-15">
-            </div>
-            <div class="form-row">
-              <label>예상 참여 인원</label>
-              <input type="number" id="event-capacity" placeholder="100" min="1">
+            <div style="display:flex;gap:8px;justify-content:flex-end">
+              <button class="btn btn-primary btn-sm" onclick="saveEventInfo()">💾 저장</button>
             </div>
           </div>
-        </div>
-        <div class="card">
-          <div class="card-title"><span class="dot"></span> 참여 설정</div>
-          <div class="form-row">
-            <label>참여 코드 (6자리)</label>
-            <div class="input-group">
-              <input type="text" id="access-code-input" placeholder="자동 생성" maxlength="6" style="letter-spacing:4px;font-weight:700;font-size:18px" oninput="this.value=this.value.toUpperCase();updateQRImage(this.value);document.getElementById('qr-code-display').textContent=this.value||'——';document.getElementById('sidebar-code').textContent=this.value||'—'">
-              <button class="btn btn-secondary" onclick="genCode()">생성</button>
-            </div>
-          </div>
-          <div class="form-row">
-            <label>청중 화면 결과 공개</label>
-            <select id="result-visibility">
-              <option value="after">응답 제출 후 공개</option>
-              <option value="close">문항 마감 후 공개</option>
-              <option value="manual">수동 공개 (관리자 제어)</option>
-              <option value="hidden">비공개 (결과 숨김)</option>
-            </select>
-          </div>
-          <div class="form-row">
-            <label>익명 참여 허용</label>
-            <div style="display:flex;align-items:center;gap:10px">
-              <div class="toggle on" id="anon-toggle" onclick="this.classList.toggle('on')"></div>
-              <span style="font-size:13px;color:var(--muted)">ON — 이름 입력 없이 참여 가능</span>
-            </div>
-          </div>
-        </div>
-        <div class="card">
-          <div class="card-title"><span class="dot"></span> QR 코드 미리보기</div>
-          <div class="qr-preview">
-            <div class="qr-box">
-              <div class="qr-code" id="qr-display" style="background:#fff;padding:0;border-radius:4px">
-                <img id="qr-img" src="" alt="QR코드" style="width:120px;height:120px;display:block;border-radius:4px">
+          <div class="card">
+            <div class="card-title"><span class="dot"></span>참여 설정</div>
+            <div class="form-row">
+              <label>참여 코드 (6자리)</label>
+              <div style="display:flex;gap:6px">
+                <input type="text" id="ev-code" maxlength="6" style="letter-spacing:4px;font-weight:700;font-size:16px" oninput="this.value=this.value.toUpperCase();updateQR()">
+                <button class="btn btn-secondary btn-sm" onclick="genCode()">생성</button>
               </div>
             </div>
-            <div class="access-url">go.planbag-ars.com</div>
-            <div class="access-code" id="qr-code-display">——</div>
-          </div>
-          <button class="btn btn-secondary" style="width:100%;margin-top:12px" onclick="downloadQR()">⬇️ QR 이미지 다운로드 (PNG)</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- TAB: QUESTIONS -->
-    <div class="tab-panel" id="tab-questions">
-      <div class="qbuilder-header">
-        <div style="display:flex;align-items:center;gap:12px">
-          <h2 style="font-size:16px;font-weight:700">문항 관리</h2>
-          <span id="q-count-badge" class="badge badge-blue">0개 문항</span>
-        </div>
-        <div style="display:flex;gap:8px">
-          <button class="btn btn-secondary btn-sm" onclick="addQuestion('mc')">＋ 객관식</button>
-          <button class="btn btn-secondary btn-sm" onclick="addQuestion('open')">＋ 주관식</button>
-          <button class="btn btn-secondary btn-sm" onclick="addQuestion('word')">＋ 워드클라우드</button>
-        </div>
-      </div>
-      <div id="questions-list">
-        <div class="empty">
-          <div class="empty-icon">📝</div>
-          <div class="empty-title">문항이 없습니다</div>
-          <div class="empty-sub">위 버튼으로 문항을 추가해주세요</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- TAB: LIVE -->
-    <div class="tab-panel" id="tab-live">
-      <div class="live-status-bar">
-        <div class="live-indicator">
-          <div class="pulse" id="live-pulse" style="background:#9ca3af"></div>
-          <div>
-            <div style="font-size:15px;font-weight:700" id="live-status-text">세션 대기 중</div>
-            <div class="live-info" id="live-event-name-display">행사명을 입력하고 세션을 시작하세요</div>
-          </div>
-        </div>
-        <div style="text-align:right">
-          <div class="live-count" id="live-realtime-count">0</div>
-          <div class="live-count-label">실시간 참여자</div>
-        </div>
-      </div>
-      <div class="live-grid">
-        <div>
-          <div id="current-q-area">
-            <div class="empty" style="background:var(--surface);border:1px solid var(--border);border-radius:12px">
-              <div class="empty-icon">🎯</div>
-              <div class="empty-title">진행 중인 문항 없음</div>
-              <div class="empty-sub">오른쪽 목록에서 문항을 선택하세요</div>
+            <div class="form-row">
+              <label>청중 결과 공개</label>
+              <select id="ev-visibility">
+                <option value="after">응답 제출 후 공개</option>
+                <option value="close">문항 마감 후 공개</option>
+                <option value="manual">수동 공개 (관리자 제어)</option>
+                <option value="hidden">비공개</option>
+              </select>
+            </div>
+            <div class="form-row">
+              <label>익명 참여</label>
+              <div style="display:flex;align-items:center;gap:8px">
+                <div class="toggle on" id="ev-anon" onclick="this.classList.toggle('on')"></div>
+                <span style="font-size:12px;color:var(--muted)">ON — 이름 없이 참여 가능</span>
+              </div>
             </div>
           </div>
-          <div style="display:flex;gap:10px;margin-top:16px">
-            <button class="btn btn-secondary" style="flex:1" onclick="prevQuestion()">◀ 이전 문항</button>
-            <button class="btn btn-primary" style="flex:1" id="launch-btn" onclick="launchQuestion()">현재 문항 출제</button>
-            <button class="btn btn-secondary" style="flex:1" onclick="nextQuestion()">다음 문항 ▶</button>
-          </div>
-          <div style="display:flex;gap:10px;margin-top:10px">
-            <button class="btn btn-ghost btn-sm" style="flex:1" onclick="toggleResults()">결과 공개 토글</button>
-            <button class="btn btn-danger btn-sm" style="flex:1" onclick="closeQuestion()">문항 마감</button>
+          <div class="card">
+            <div class="card-title"><span class="dot"></span>청중 참여 링크</div>
+            <div class="audience-link-box">
+              <div class="audience-link-left">
+                <div class="audience-link-label">참여 URL</div>
+                <div class="audience-link-url" id="al-url">—</div>
+                <div class="audience-link-code" id="al-code">——</div>
+                <div style="display:flex;gap:6px;margin-top:10px">
+                  <button class="btn btn-sm" style="background:rgba(255,255,255,0.15);color:#fff;border:none" onclick="copyAudienceLink()">🔗 링크 복사</button>
+                  <button class="btn btn-sm" style="background:rgba(255,255,255,0.15);color:#fff;border:none" onclick="downloadQR()">⬇️ QR 다운로드</button>
+                </div>
+              </div>
+              <div class="audience-qr-box">
+                <img id="qr-img" src="" alt="QR">
+                <div class="qr-sub" id="qr-sub-code">——</div>
+              </div>
+            </div>
           </div>
         </div>
-        <div class="q-list-panel">
-          <div class="q-list-header">문항 목록</div>
-          <div id="live-q-list">
-            <div style="padding:20px;text-align:center;color:var(--muted);font-size:13px">문항을 먼저 등록해주세요</div>
+        <div style="margin-top:14px;display:flex;justify-content:flex-end">
+          <button class="btn btn-primary" id="start-session-btn2" onclick="openStartModal()">▶ 세션 시작</button>
+        </div>
+      </div>
+
+      <!-- 문항 관리 -->
+      <div class="tab-panel" id="tab-questions">
+        <div class="qbuilder-header">
+          <div style="display:flex;align-items:center;gap:10px">
+            <h2 style="font-size:15px;font-weight:700">문항 관리</h2>
+            <span id="q-count-badge" class="badge badge-blue">0개</span>
           </div>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-secondary btn-sm" onclick="addQuestion('mc')">＋ 객관식</button>
+            <button class="btn btn-secondary btn-sm" onclick="addQuestion('open')">＋ 주관식</button>
+            <button class="btn btn-secondary btn-sm" onclick="addQuestion('word')">＋ 워드클라우드</button>
+            <button class="btn btn-primary btn-sm" onclick="saveQuestions()">💾 저장</button>
+          </div>
+        </div>
+        <div id="questions-list"></div>
+      </div>
+
+      <!-- 라이브 진행 -->
+      <div class="tab-panel" id="tab-live">
+        <div class="live-status-bar">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div class="pulse" id="live-pulse" style="background:#9ca3af"></div>
+            <div>
+              <div style="font-size:14px;font-weight:700" id="live-status-text">세션 대기 중</div>
+              <div style="font-size:13px;color:rgba(255,255,255,0.6)" id="live-event-name-display">세션을 시작해주세요</div>
+            </div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:26px;font-weight:700" id="live-realtime-count">0</div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.5)">실시간 참여자</div>
+          </div>
+        </div>
+        <div class="live-grid">
+          <div>
+            <div id="current-q-area">
+              <div class="empty" style="background:var(--surface);border:1px solid var(--border);border-radius:12px">
+                <div class="empty-icon">🎯</div>
+                <div class="empty-title">진행 중인 문항 없음</div>
+                <div class="empty-sub">오른쪽 목록에서 문항을 선택하세요</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:12px">
+              <button class="btn btn-secondary" style="flex:1" onclick="prevQuestion()">◀ 이전</button>
+              <button class="btn btn-primary" style="flex:1" onclick="launchQuestion()">출제하기</button>
+              <button class="btn btn-secondary" style="flex:1" onclick="nextQuestion()">다음 ▶</button>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <button class="btn btn-ghost btn-sm" style="flex:1" onclick="toggleResults()">결과 공개 토글</button>
+              <button class="btn btn-danger btn-sm" style="flex:1" onclick="closeQuestion()">문항 마감</button>
+            </div>
+          </div>
+          <div class="q-list-panel">
+            <div class="q-list-header">문항 목록</div>
+            <div id="live-q-list"><div style="padding:16px;text-align:center;color:var(--muted);font-size:13px">문항을 먼저 등록해주세요</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 청중 질문 -->
+      <div class="tab-panel" id="tab-upflow">
+        <div class="stat-grid" style="grid-template-columns:repeat(3,1fr);max-width:420px;margin-bottom:16px">
+          <div class="stat-card"><div class="stat-number accent" id="upflow-total">0</div><div class="stat-label">총 질문</div></div>
+          <div class="stat-card"><div class="stat-number" id="upflow-pending">0</div><div class="stat-label">미답변</div></div>
+          <div class="stat-card"><div class="stat-number" id="upflow-answered">0</div><div class="stat-label">답변완료</div></div>
+        </div>
+        <div class="card" style="padding:0;overflow:hidden">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--bg)">
+            <span style="font-size:13px;font-weight:700">청중 질문 목록</span>
+            <div style="display:flex;gap:6px">
+              <button class="btn btn-secondary btn-sm" onclick="sortUpflow('votes')">추천순</button>
+              <button class="btn btn-secondary btn-sm" onclick="sortUpflow('time')">최신순</button>
+            </div>
+          </div>
+          <div id="upflow-list"><div class="empty"><div class="empty-icon">💬</div><div class="empty-title">질문이 없습니다</div></div></div>
+        </div>
+      </div>
+
+      <!-- 출석 현황 -->
+      <div class="tab-panel" id="tab-attendance">
+        <div class="stat-grid">
+          <div class="stat-card"><div class="stat-number" id="att-total">0</div><div class="stat-label">전체</div></div>
+          <div class="stat-card"><div class="stat-number accent" id="att-present">0</div><div class="stat-label">출석</div></div>
+          <div class="stat-card"><div class="stat-number" id="att-absent">0</div><div class="stat-label">미확인</div></div>
+          <div class="stat-card"><div class="stat-number" id="att-rate">0%</div><div class="stat-label">출석률</div></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:14px">
+          <input type="text" placeholder="이름 검색..." style="max-width:240px" id="att-search" oninput="filterAttendees()">
+          <button class="btn btn-secondary btn-sm" onclick="exportAttendance()">📥 엑셀 다운로드</button>
+        </div>
+        <div class="attendance-grid" id="attendance-grid">
+          <div style="grid-column:1/-1" class="empty"><div class="empty-icon">✅</div><div class="empty-title">출석 데이터 없음</div></div>
+        </div>
+      </div>
+
+      <!-- 결과 분석 -->
+      <div class="tab-panel" id="tab-results">
+        <div class="stat-grid">
+          <div class="stat-card"><div class="stat-number" id="res-questions">0</div><div class="stat-label">총 문항</div></div>
+          <div class="stat-card"><div class="stat-number accent" id="res-responses">0</div><div class="stat-label">총 응답</div></div>
+          <div class="stat-card"><div class="stat-number" id="res-avg-rate">—</div><div class="stat-label">평균 응답률</div></div>
+          <div class="stat-card"><div class="stat-number" id="res-participants">0</div><div class="stat-label">참여 인원</div></div>
+        </div>
+        <div id="results-detail"><div class="empty"><div class="empty-icon">📊</div><div class="empty-title">결과 데이터 없음</div></div></div>
+        <div style="margin-top:16px;display:flex;gap:8px">
+          <button class="btn btn-primary" onclick="exportResults()">📥 결과 다운로드</button>
         </div>
       </div>
     </div>
-
-    <!-- TAB: UPFLOW -->
-    <div class="tab-panel" id="tab-upflow">
-      <div class="stat-grid" style="grid-template-columns:repeat(3,1fr);max-width:500px">
-        <div class="stat-card">
-          <div class="stat-number accent" id="upflow-total">0</div>
-          <div class="stat-label">총 질문 수</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-number" id="upflow-pending">0</div>
-          <div class="stat-label">미답변</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-number" id="upflow-answered">0</div>
-          <div class="stat-label">답변 완료</div>
-        </div>
-      </div>
-      <div class="card" style="padding:0;overflow:hidden">
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border);background:var(--bg)">
-          <span style="font-size:13px;font-weight:700">청중 질문 목록 (추천 순)</span>
-          <div style="display:flex;gap:8px">
-            <button class="btn btn-secondary btn-sm" onclick="sortUpflow('votes')">추천 순</button>
-            <button class="btn btn-secondary btn-sm" onclick="sortUpflow('time')">최신 순</button>
-          </div>
-        </div>
-        <div id="upflow-list">
-          <div class="empty">
-            <div class="empty-icon">💬</div>
-            <div class="empty-title">질문이 없습니다</div>
-            <div class="empty-sub">청중들의 질문이 여기에 표시됩니다</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- TAB: ATTENDANCE -->
-    <div class="tab-panel" id="tab-attendance">
-      <div class="stat-grid" style="grid-template-columns:repeat(4,1fr)">
-        <div class="stat-card">
-          <div class="stat-number" id="att-total">0</div>
-          <div class="stat-label">전체 등록</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-number accent" id="att-present">0</div>
-          <div class="stat-label">출석 확인</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-number" id="att-absent">0</div>
-          <div class="stat-label">미확인</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-number" id="att-rate">0%</div>
-          <div class="stat-label">출석률</div>
-        </div>
-      </div>
-      <div style="display:flex;gap:10px;margin-bottom:16px">
-        <input type="text" placeholder="이름으로 검색..." style="max-width:280px" id="att-search" oninput="filterAttendees()">
-        <button class="btn btn-primary" onclick="openAddAttendeeModal()">＋ 참석자 추가</button>
-        <button class="btn btn-secondary" onclick="exportAttendance()">📥 엑셀 다운로드</button>
-      </div>
-      <div class="attendance-grid" id="attendance-grid">
-        <div style="grid-column:1/-1" class="empty">
-          <div class="empty-icon">✅</div>
-          <div class="empty-title">참석자가 없습니다</div>
-          <div class="empty-sub">참석자를 추가하거나 청중이 QR로 접속하면 자동 등록됩니다</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- TAB: RESULTS -->
-    <div class="tab-panel" id="tab-results">
-      <div class="stat-grid">
-        <div class="stat-card">
-          <div class="stat-number" id="res-questions">0</div>
-          <div class="stat-label">총 문항 수</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-number accent" id="res-responses">0</div>
-          <div class="stat-label">총 응답 수</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-number" id="res-avg-rate">—</div>
-          <div class="stat-label">평균 응답률</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-number" id="res-participants">0</div>
-          <div class="stat-label">참여 인원</div>
-        </div>
-      </div>
-      <div id="results-detail">
-        <div class="empty">
-          <div class="empty-icon">📊</div>
-          <div class="empty-title">결과 데이터가 없습니다</div>
-          <div class="empty-sub">세션을 진행하면 결과가 여기에 표시됩니다</div>
-        </div>
-      </div>
-      <div style="margin-top:20px;display:flex;gap:10px">
-        <button class="btn btn-primary" onclick="exportResults()">📥 결과 엑셀 다운로드</button>
-        <button class="btn btn-secondary" onclick="printResults()">🖨️ 결과 인쇄</button>
-      </div>
-    </div>
-
   </div>
 </main>
 
-<!-- START SESSION MODAL -->
-<div class="modal-overlay" id="start-modal">
+<!-- 행사 생성/수정 모달 -->
+<div class="modal-overlay" id="event-modal">
   <div class="modal">
-    <div class="modal-title">🚀 세션 시작</div>
-    <div class="form-row">
-      <label>행사명 확인</label>
-      <input type="text" id="modal-event-name" readonly style="background:#f9fafb;font-weight:600">
-    </div>
-    <div class="form-row">
-      <label>참여 코드</label>
-      <input type="text" id="modal-access-code" readonly style="background:#f9fafb;font-size:24px;font-weight:700;letter-spacing:6px;text-align:center">
-    </div>
-    <div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:8px;padding:12px;font-size:13px;color:#92400e">
-      ⚠️ 세션을 시작하면 청중이 QR코드로 접속할 수 있습니다. 준비가 완료되었을 때 시작해주세요.
+    <div class="modal-title" id="event-modal-title">새 행사 만들기</div>
+    <div class="form-grid-2">
+      <div class="form-row"><label>행사명 *</label><input type="text" id="m-name" placeholder="2025 HR 컨퍼런스"></div>
+      <div class="form-row"><label>주최 기관</label><input type="text" id="m-org" placeholder="플랜백"></div>
+      <div class="form-row"><label>행사 일정</label><input type="date" id="m-date"></div>
+      <div class="form-row"><label>예상 참여 인원</label><input type="number" id="m-capacity" min="1" placeholder="100"></div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeModal('start-modal')">취소</button>
-      <button class="btn btn-primary" onclick="startSession()">▶ 세션 시작</button>
+      <button class="btn btn-secondary" onclick="closeModal('event-modal')">취소</button>
+      <button class="btn btn-primary" onclick="createEvent()">만들기</button>
     </div>
   </div>
 </div>
 
-<!-- ADD ATTENDEE MODAL -->
-<div class="modal-overlay" id="attendee-modal">
+<!-- 세션 시작 모달 -->
+<div class="modal-overlay" id="start-modal">
   <div class="modal">
-    <div class="modal-title">참석자 추가</div>
-    <div class="form-row">
-      <label>이름</label>
-      <input type="text" id="new-attendee-name" placeholder="홍길동">
-    </div>
-    <div class="form-row">
-      <label>소속 / 직책 (선택)</label>
-      <input type="text" id="new-attendee-org" placeholder="OO기업 / 팀장">
+    <div class="modal-title">🚀 세션 시작</div>
+    <div class="form-row"><label>행사명</label><input type="text" id="modal-event-name" readonly style="background:#f9fafb;font-weight:600"></div>
+    <div class="form-row"><label>참여 코드</label><input type="text" id="modal-access-code" readonly style="background:#f9fafb;font-size:22px;font-weight:700;letter-spacing:6px;text-align:center"></div>
+    <div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:8px;padding:11px;font-size:13px;color:#92400e">
+      ⚠️ 세션 시작 후 청중이 QR코드로 접속할 수 있습니다
     </div>
     <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeModal('attendee-modal')">취소</button>
-      <button class="btn btn-primary" onclick="addAttendee()">추가</button>
+      <button class="btn btn-secondary" onclick="closeModal('start-modal')">취소</button>
+      <button class="btn btn-primary" id="start-confirm-btn" onclick="startSession()">▶ 시작</button>
     </div>
   </div>
 </div>
@@ -534,314 +473,452 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // STATE
 // ============================================================
 const state = {
-  sessionActive: false,
+  events: [],
+  currentEvent: null,
   sessionId: null,
+  sessionActive: false,
   currentQIndex: -1,
   activeQuestion: null,
   questions: [],
   attendees: [],
   upflows: [],
   responses: {},
-  participants: new Set(),
+  participantCount: 0,
   realtimeChannel: null
 };
 
 // ============================================================
-// TAB SWITCHING
+// INIT
 // ============================================================
-function switchTab(name, el) {
-  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  document.getElementById('tab-'+name).classList.add('active');
-  el.classList.add('active');
-  const titles = {setup:'행사 세팅',questions:'문항 관리',live:'라이브 진행',upflow:'청중 질문',attendance:'출석 현황',results:'결과 분석'};
-  document.getElementById('topbar-title').innerHTML = titles[name] + ' <span id="topbar-event-name"></span>';
-  updateEventName();
-  if(name==='live') refreshLiveQList();
-  if(name==='upflow') { loadUpflows(); }
-  if(name==='attendance') renderAttendance();
+window.addEventListener('DOMContentLoaded', () => {
+  loadEvents();
+});
+
+// ============================================================
+// EVENT LIST
+// ============================================================
+async function loadEvents() {
+  const { data, error } = await sb.from('sessions')
+    .select('*').order('created_at', { ascending: false });
+  state.events = data || [];
+  renderEventCards();
+}
+
+function renderEventCards() {
+  const container = document.getElementById('event-cards');
+  if (!state.events.length) {
+    container.innerHTML = `<div class="empty-events" style="grid-column:1/-1"><div class="icon">🎯</div><h3>등록된 행사가 없습니다</h3><p>행사 만들기 버튼으로 첫 행사를 등록해보세요</p></div>`;
+    return;
+  }
+  container.innerHTML = state.events.map(ev => {
+    const statusClass = ev.is_active ? 'status-live' : 'status-ready';
+    const statusText = ev.is_active ? '● LIVE' : '대기';
+    const dateStr = ev.event_date ? new Date(ev.event_date).toLocaleDateString('ko-KR') : '날짜 미정';
+    return `<div class="event-card" onclick="enterEvent('${ev.id}')">
+      <div class="event-card-status ${statusClass}">${statusText}</div>
+      <div class="event-card-name">${ev.event_name}</div>
+      <div class="event-card-org">${ev.org_name || ''}</div>
+      <div class="event-card-meta">
+        <span>📅 ${dateStr}</span>
+        <span>🔑 ${ev.access_code}</span>
+        <span>👥 ${ev.capacity || '—'}명</span>
+      </div>
+      <div class="event-card-actions" onclick="event.stopPropagation()">
+        <button class="btn btn-primary btn-sm" onclick="enterEvent('${ev.id}')">운영하기</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteEvent('${ev.id}')">삭제</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openCreateEventModal() {
+  document.getElementById('event-modal-title').textContent = '새 행사 만들기';
+  document.getElementById('m-name').value = '';
+  document.getElementById('m-org').value = '';
+  document.getElementById('m-date').value = '';
+  document.getElementById('m-capacity').value = '';
+  document.getElementById('event-modal').classList.add('open');
+}
+
+async function createEvent() {
+  const name = document.getElementById('m-name').value.trim();
+  if (!name) { alert('행사명을 입력해주세요'); return; }
+  const code = Math.random().toString(36).substr(2,6).toUpperCase();
+  const { data, error } = await sb.from('sessions').insert({
+    event_name: name,
+    org_name: document.getElementById('m-org').value.trim(),
+    event_date: document.getElementById('m-date').value || null,
+    capacity: parseInt(document.getElementById('m-capacity').value) || null,
+    access_code: code,
+    result_visibility: 'after',
+    allow_anonymous: true,
+    is_active: false
+  }).select().single();
+  if (error) { alert('행사 생성 실패: ' + error.message); return; }
+  closeModal('event-modal');
+  await loadEvents();
+  enterEvent(data.id);
+}
+
+async function deleteEvent(id) {
+  if (!confirm('행사를 삭제하시겠습니까? 모든 데이터가 삭제됩니다.')) return;
+  await sb.from('sessions').delete().eq('id', id);
+  await loadEvents();
+}
+
+async function enterEvent(id) {
+  const { data: ev } = await sb.from('sessions').select('*').eq('id', id).single();
+  state.currentEvent = ev;
+  state.sessionId = ev.id;
+  state.sessionActive = ev.is_active;
+
+  // UI 업데이트
+  document.getElementById('screen-events').classList.remove('active');
+  document.getElementById('screen-event').classList.add('active');
+  document.getElementById('event-nav-items').style.display = 'block';
+  document.getElementById('sidebar-session').style.display = 'block';
+  document.getElementById('topbar-event').textContent = '— ' + ev.event_name;
+  document.getElementById('start-session-btn').style.display = 'inline-flex';
+
+  // 행사 정보 폼 채우기
+  document.getElementById('ev-name').value = ev.event_name || '';
+  document.getElementById('ev-org').value = ev.org_name || '';
+  document.getElementById('ev-date').value = ev.event_date || '';
+  document.getElementById('ev-capacity').value = ev.capacity || '';
+  document.getElementById('ev-code').value = ev.access_code || '';
+  document.getElementById('ev-visibility').value = ev.result_visibility || 'after';
+  if (!ev.allow_anonymous) document.getElementById('ev-anon').classList.remove('on');
+
+  updateQR();
+  updateTopbar();
+
+  // 세션 활성 상태면 LIVE 표시
+  if (ev.is_active) {
+    setLiveUI(true);
+    subscribeRealtime(ev.id);
+  }
+
+  // 문항 로드
+  await loadQuestions();
+  // 탭 초기화
+  switchTabByName('setup');
+
+  // 첫 번째 nav 활성화
+  document.querySelectorAll('#event-nav-items .nav-item').forEach((b,i) => b.classList.toggle('active', i===0));
+}
+
+function goEventList() {
+  if (state.realtimeChannel) {
+    sb.removeChannel(state.realtimeChannel);
+    state.realtimeChannel = null;
+  }
+  state.currentEvent = null;
+  state.sessionId = null;
+  state.sessionActive = false;
+  state.questions = [];
+  document.getElementById('screen-event').classList.remove('active');
+  document.getElementById('screen-events').classList.add('active');
+  document.getElementById('event-nav-items').style.display = 'none';
+  document.getElementById('sidebar-session').style.display = 'none';
+  document.getElementById('start-session-btn').style.display = 'none';
+  document.getElementById('topbar-event').textContent = '';
+  document.getElementById('topbar-title').textContent = '행사 목록';
+  document.getElementById('live-participant-wrap').style.display = 'none';
+  document.getElementById('live-controls').style.display = 'none';
+  document.getElementById('nav-events').classList.add('active');
+  loadEvents();
 }
 
 // ============================================================
-// EVENT SETUP
+// EVENT SETUP SAVE
 // ============================================================
-function updateEventName() {
-  const name = document.getElementById('event-name')?.value || '';
-  const el = document.getElementById('topbar-event-name');
-  if(el && name) el.textContent = '— ' + name;
-  const codeInput = document.getElementById('access-code-input');
-  if(codeInput && !codeInput.value) genCode();
+async function saveEventInfo() {
+  if (!state.sessionId) return;
+  const { error } = await sb.from('sessions').update({
+    event_name: document.getElementById('ev-name').value.trim(),
+    org_name: document.getElementById('ev-org').value.trim(),
+    event_date: document.getElementById('ev-date').value || null,
+    capacity: parseInt(document.getElementById('ev-capacity').value) || null,
+    access_code: document.getElementById('ev-code').value.trim(),
+    result_visibility: document.getElementById('ev-visibility').value,
+    allow_anonymous: document.getElementById('ev-anon').classList.contains('on')
+  }).eq('id', state.sessionId);
+  if (error) { alert('저장 실패: ' + error.message); return; }
+  alert('저장되었습니다');
+  updateTopbar();
+  updateQR();
+}
+
+function updateTopbar() {
+  const name = document.getElementById('ev-name')?.value || '';
+  document.getElementById('topbar-event').textContent = name ? '— ' + name : '';
+  document.getElementById('topbar-title').textContent = '행사 세팅';
 }
 
 function genCode() {
   const code = Math.random().toString(36).substr(2,6).toUpperCase();
-  document.getElementById('access-code-input').value = code;
-  document.getElementById('qr-code-display').textContent = code;
-  document.getElementById('sidebar-code').textContent = code;
-  updateQRImage(code);
+  document.getElementById('ev-code').value = code;
+  updateQR();
 }
 
-function updateQRImage(code) {
-  if (!code) return;
-  const targetUrl = encodeURIComponent('https://starbucks-judge.github.io/planbag-ars/audience.html?code=' + code);
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${targetUrl}`;
-  const img = document.getElementById('qr-img');
-  if (img) img.src = qrUrl;
+function updateQR() {
+  const code = document.getElementById('ev-code')?.value || '';
+  const url = `https://starbucks-judge.github.io/planbag-ars/audience.html?code=${code}`;
+  document.getElementById('al-url').textContent = url;
+  document.getElementById('al-code').textContent = code || '——';
+  document.getElementById('sidebar-code').textContent = code || '—';
+  document.getElementById('qr-sub-code').textContent = code || '——';
+  if (code) {
+    document.getElementById('qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}`;
+  }
+}
+
+function copyAudienceLink() {
+  const code = document.getElementById('ev-code').value;
+  const url = `https://starbucks-judge.github.io/planbag-ars/audience.html?code=${code}`;
+  navigator.clipboard.writeText(url).then(() => alert('링크가 복사되었습니다'));
 }
 
 function downloadQR() {
-  const code = document.getElementById('access-code-input').value || 'QRCODE';
-  const eventName = document.getElementById('event-name').value || 'planbag-ars';
-  const targetUrl = encodeURIComponent('https://starbucks-judge.github.io/planbag-ars/audience.html?code=' + code);
-  const url = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${targetUrl}`;
+  const code = document.getElementById('ev-code').value || 'QRCODE';
+  const eventName = document.getElementById('ev-name').value || 'planbag-ars';
+  const url = `https://starbucks-judge.github.io/planbag-ars/audience.html?code=${code}`;
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(url)}`;
 
-  fetch(url)
-    .then(res => res.blob())
-    .then(blob => {
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = `QR_${eventName}_${code}.png`;
-      a.click();
-      URL.revokeObjectURL(a.href);
-    })
-    .catch(() => {
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `QR_${eventName}_${code}.png`;
-      a.target = '_blank';
-      a.click();
-    });
+  // Canvas로 카드 형태 생성
+  const canvas = document.createElement('canvas');
+  canvas.width = 520; canvas.height = 600;
+  const ctx = canvas.getContext('2d');
+
+  // 배경
+  ctx.fillStyle = '#1a1a2e';
+  ctx.roundRect ? ctx.roundRect(0,0,520,600,20) : ctx.fillRect(0,0,520,600);
+  ctx.fill();
+
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = () => {
+    // QR 흰 박스
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    if(ctx.roundRect) ctx.roundRect(60,60,400,400,16);
+    else ctx.rect(60,60,400,400);
+    ctx.fill();
+    ctx.drawImage(img, 70, 70, 380, 380);
+
+    // URL 텍스트
+    ctx.fillStyle = 'rgba(255,255,255,0.45)';
+    ctx.font = '16px Pretendard, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('starbucks-judge.github.io/planbag-ars/audience.html', 260, 496);
+
+    // 코드 텍스트
+    ctx.fillStyle = '#e94560';
+    ctx.font = 'bold 52px Pretendard, sans-serif';
+    ctx.letterSpacing = '8px';
+    ctx.fillText(code, 260, 560);
+
+    const a = document.createElement('a');
+    a.href = canvas.toDataURL('image/png');
+    a.download = `QR_${eventName}_${code}.png`;
+    a.click();
+  };
+  img.onerror = () => {
+    // fallback: 그냥 QR만 다운로드
+    const a = document.createElement('a');
+    a.href = qrUrl; a.target = '_blank';
+    a.download = `QR_${eventName}_${code}.png`;
+    a.click();
+  };
+  img.src = qrUrl;
 }
 
 // ============================================================
-// QUESTION BUILDER
+// QUESTIONS
 // ============================================================
-let qCounter = 0;
+async function loadQuestions() {
+  if (!state.sessionId) return;
+  const { data } = await sb.from('questions')
+    .select('*').eq('session_id', state.sessionId).order('sort_order');
+  state.questions = (data || []).map(q => ({
+    id: q.id, dbId: q.id, type: q.type, text: q.text,
+    options: q.options || [], timeLimit: q.time_limit || 0,
+    showResult: q.show_result !== false,
+    isActive: q.is_active, isClosed: q.is_closed
+  }));
+  renderQuestions();
+  refreshLiveQList();
+  updateQCount();
+}
 
+let qCounter = 0;
 function addQuestion(type) {
   qCounter++;
-  const q = {id: qCounter, type, text:'', options:['','','',''], timeLimit:0, showResult:true};
-  state.questions.push(q);
+  state.questions.push({ id: 'new_'+qCounter, type, text:'', options:['','','',''], timeLimit:0, showResult:true });
   renderQuestions();
   updateQCount();
 }
 
 function renderQuestions() {
   const container = document.getElementById('questions-list');
-  if(state.questions.length === 0) {
+  if (!state.questions.length) {
     container.innerHTML = `<div class="empty"><div class="empty-icon">📝</div><div class="empty-title">문항이 없습니다</div><div class="empty-sub">위 버튼으로 문항을 추가해주세요</div></div>`;
     return;
   }
+  const letters = ['A','B','C','D','E','F'];
   container.innerHTML = state.questions.map((q,i) => {
-    const typeLabel = {mc:'객관식',open:'주관식',word:'워드클라우드'}[q.type];
-    const typeClass = {mc:'',open:'open',word:'word'}[q.type];
+    const tl = {mc:'객관식',open:'주관식',word:'워드클라우드'}[q.type];
+    const tc = {mc:'',open:'open',word:'word'}[q.type];
     let body = '';
-    if(q.type === 'mc') {
-      const letters = ['A','B','C','D','E','F'];
-      body = `
-        <div class="options-grid">
-          ${q.options.map((opt,oi) => `
-            <div class="option-item">
-              <div class="option-letter">${letters[oi]}</div>
-              <input class="option-input" placeholder="선택지 ${letters[oi]}" value="${opt}" onchange="updateOption(${q.id},${oi},this.value)">
-              <button class="option-del" onclick="removeOption(${q.id},${oi})">✕</button>
-            </div>
-          `).join('')}
-        </div>
-        <button class="add-option-btn" onclick="addOption(${q.id})">＋ 선택지 추가</button>
-      `;
+    if (q.type === 'mc') {
+      body = `<div class="options-grid">${q.options.map((opt,oi)=>`
+        <div class="option-item">
+          <div class="option-letter">${letters[oi]}</div>
+          <input class="option-input" placeholder="선택지 ${letters[oi]}" value="${opt}" onchange="updateOption('${q.id}',${oi},this.value)">
+          <button class="option-del" onclick="removeOption('${q.id}',${oi})">✕</button>
+        </div>`).join('')}</div>
+        <button class="add-option-btn" onclick="addOption('${q.id}')">＋ 선택지 추가</button>`;
     } else {
-      body = `<div style="background:var(--bg);border-radius:8px;padding:12px;font-size:13px;color:var(--muted)">
-        ${q.type==='word' ? '🌐 주관식 응답을 워드클라우드로 시각화합니다' : '📝 청중이 자유롭게 텍스트로 응답합니다'}
-      </div>`;
+      body = `<div style="background:var(--bg);border-radius:8px;padding:10px;font-size:13px;color:var(--muted)">${q.type==='word'?'🌐 워드클라우드로 시각화됩니다':'📝 자유 텍스트 응답'}</div>`;
     }
-    return `
-      <div class="question-card" id="qcard-${q.id}">
-        <div class="q-header">
-          <div class="q-num">${i+1}</div>
-          <span class="q-type-badge ${typeClass}">${typeLabel}</span>
-          <input class="q-title-input" placeholder="문항 내용을 입력하세요" value="${q.text}" onchange="updateQText(${q.id},this.value)">
-          <div class="q-actions">
-            <button class="btn btn-secondary btn-sm" onclick="moveQ(${q.id},-1)">↑</button>
-            <button class="btn btn-secondary btn-sm" onclick="moveQ(${q.id},1)">↓</button>
-            <button class="btn btn-danger btn-sm" onclick="deleteQ(${q.id})">삭제</button>
-          </div>
-        </div>
-        <div class="q-body">
-          ${body}
-          <div class="divider"></div>
-          <div class="q-settings">
-            <div class="setting-item">
-              <span>제한시간</span>
-              <input type="number" class="time-input" placeholder="0=무제한" min="0" value="${q.timeLimit}" onchange="updateQTime(${q.id},this.value)">
-              <span>초</span>
-            </div>
-            <div class="setting-item">
-              <div class="toggle ${q.showResult?'on':''}" onclick="toggleShowResult(${q.id},this)"></div>
-              <span>청중에게 결과 공개</span>
-            </div>
-          </div>
+    return `<div class="question-card">
+      <div class="q-header">
+        <div class="q-num">${i+1}</div>
+        <span class="q-type-badge ${tc}">${tl}</span>
+        <input class="q-title-input" placeholder="문항 내용 입력" value="${q.text}" onchange="updateQText('${q.id}',this.value)">
+        <div class="q-actions">
+          <button class="btn btn-secondary btn-sm" onclick="moveQ('${q.id}',-1)">↑</button>
+          <button class="btn btn-secondary btn-sm" onclick="moveQ('${q.id}',1)">↓</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteQ('${q.id}')">삭제</button>
         </div>
       </div>
-    `;
+      <div class="q-body">${body}
+        <div class="q-settings">
+          <div class="setting-item"><span>제한시간</span><input type="number" class="time-input" min="0" value="${q.timeLimit}" onchange="updateQTime('${q.id}',this.value)"><span>초</span></div>
+          <div class="setting-item"><div class="toggle ${q.showResult?'on':''}" onclick="toggleShowResult('${q.id}',this)"></div><span>결과 공개</span></div>
+        </div>
+      </div>
+    </div>`;
   }).join('');
 }
 
-function updateQText(id, val) {
-  const q = state.questions.find(q=>q.id===id);
-  if(q) q.text = val;
+function updateQText(id,v){const q=state.questions.find(q=>q.id===id);if(q)q.text=v;refreshLiveQList();}
+function updateOption(qid,oi,v){const q=state.questions.find(q=>q.id===qid);if(q)q.options[oi]=v;}
+function addOption(qid){const q=state.questions.find(q=>q.id===qid);if(q&&q.options.length<6){q.options.push('');renderQuestions();}}
+function removeOption(qid,oi){const q=state.questions.find(q=>q.id===qid);if(q&&q.options.length>2){q.options.splice(oi,1);renderQuestions();}}
+function updateQTime(id,v){const q=state.questions.find(q=>q.id===id);if(q)q.timeLimit=parseInt(v)||0;}
+function toggleShowResult(id,el){const q=state.questions.find(q=>q.id===id);if(q){q.showResult=!q.showResult;el.classList.toggle('on');}}
+function moveQ(id,dir){const i=state.questions.findIndex(q=>q.id===id);const ni=i+dir;if(ni<0||ni>=state.questions.length)return;[state.questions[i],state.questions[ni]]=[state.questions[ni],state.questions[i]];renderQuestions();}
+function deleteQ(id){state.questions=state.questions.filter(q=>q.id!==id);renderQuestions();updateQCount();refreshLiveQList();}
+function updateQCount(){document.getElementById('q-count-badge').textContent=state.questions.length+'개';}
+
+async function saveQuestions() {
+  if (!state.sessionId) return;
+  const btn = event.target;
+  btn.textContent = '저장 중...'; btn.disabled = true;
+  // 기존 문항 삭제 후 재삽입
+  await sb.from('questions').delete().eq('session_id', state.sessionId);
+  if (state.questions.length > 0) {
+    const rows = state.questions.map((q,i) => ({
+      session_id: state.sessionId, sort_order: i,
+      type: q.type, text: q.text, options: q.options || null,
+      time_limit: q.timeLimit || 0, show_result: q.showResult !== false,
+      is_active: false, is_closed: false
+    }));
+    const { data, error } = await sb.from('questions').insert(rows).select();
+    if (!error && data) data.forEach((sq,i) => { state.questions[i].dbId = sq.id; state.questions[i].id = sq.id; });
+  }
+  btn.textContent = '💾 저장'; btn.disabled = false;
+  alert('문항이 저장되었습니다');
   refreshLiveQList();
-}
-function updateOption(qid, oi, val) {
-  const q = state.questions.find(q=>q.id===qid);
-  if(q) q.options[oi] = val;
-}
-function addOption(qid) {
-  const q = state.questions.find(q=>q.id===qid);
-  if(q && q.options.length < 6) { q.options.push(''); renderQuestions(); }
-}
-function removeOption(qid, oi) {
-  const q = state.questions.find(q=>q.id===qid);
-  if(q && q.options.length > 2) { q.options.splice(oi,1); renderQuestions(); }
-}
-function updateQTime(id, val) {
-  const q = state.questions.find(q=>q.id===id);
-  if(q) q.timeLimit = parseInt(val)||0;
-}
-function toggleShowResult(id, el) {
-  const q = state.questions.find(q=>q.id===id);
-  if(q) { q.showResult = !q.showResult; el.classList.toggle('on'); }
-}
-function moveQ(id, dir) {
-  const i = state.questions.findIndex(q=>q.id===id);
-  const ni = i+dir;
-  if(ni<0||ni>=state.questions.length) return;
-  [state.questions[i],state.questions[ni]] = [state.questions[ni],state.questions[i]];
-  renderQuestions();
-}
-function deleteQ(id) {
-  state.questions = state.questions.filter(q=>q.id!==id);
-  renderQuestions();
-  updateQCount();
-  refreshLiveQList();
-}
-function updateQCount() {
-  document.getElementById('q-count-badge').textContent = state.questions.length+'개 문항';
 }
 
 // ============================================================
 // SESSION
 // ============================================================
 function openStartModal() {
-  const name = document.getElementById('event-name').value;
-  const code = document.getElementById('access-code-input').value;
-  if(!name) { alert('행사명을 먼저 입력해주세요'); return; }
-  if(!code) genCode();
-  document.getElementById('modal-event-name').value = name || '(행사명 미입력)';
-  document.getElementById('modal-access-code').value = document.getElementById('access-code-input').value;
+  const name = document.getElementById('ev-name').value;
+  const code = document.getElementById('ev-code').value;
+  if (!name) { alert('행사명을 입력해주세요'); return; }
+  document.getElementById('modal-event-name').value = name;
+  document.getElementById('modal-access-code').value = code;
   document.getElementById('start-modal').classList.add('open');
 }
 
 async function startSession() {
-  const eventName = document.getElementById('event-name').value;
-  const code = document.getElementById('access-code-input').value;
-  const visibility = document.getElementById('result-visibility').value;
-  const allowAnon = document.getElementById('anon-toggle').classList.contains('on');
-
-  const btn = document.querySelector('#start-modal .btn-primary');
-  btn.textContent = '생성 중...'; btn.disabled = true;
-
-  // 1) Supabase에 세션 생성
-  const { data: session, error } = await sb.from('sessions').insert({
-    event_name: eventName,
-    access_code: code,
-    result_visibility: visibility,
-    allow_anonymous: allowAnon,
-    is_active: true
-  }).select().single();
-
-  if (error) { alert('세션 생성 실패: ' + error.message); btn.textContent='▶ 세션 시작'; btn.disabled=false; return; }
-  state.sessionId = session.id;
-
-  // 2) 문항 일괄 저장
-  if (state.questions.length > 0) {
-    const qRows = state.questions.map((q, i) => ({
-      session_id: session.id,
-      sort_order: i,
-      type: q.type,
-      text: q.text,
-      options: q.options || null,
-      time_limit: q.timeLimit || 0,
-      show_result: q.showResult !== false
-    }));
-    const { data: savedQs, error: qErr } = await sb.from('questions').insert(qRows).select();
-    if (!qErr && savedQs) {
-      savedQs.forEach((sq, i) => { state.questions[i].dbId = sq.id; });
-    }
-  }
-
-  // 3) Realtime 구독 (참여자 수, UpFlow, 응답)
-  subscribeRealtime(session.id);
-
+  const btn = document.getElementById('start-confirm-btn');
+  btn.textContent = '시작 중...'; btn.disabled = true;
+  const { error } = await sb.from('sessions').update({ is_active: true }).eq('id', state.sessionId);
+  if (error) { alert('세션 시작 실패: ' + error.message); btn.textContent='▶ 시작'; btn.disabled=false; return; }
   state.sessionActive = true;
   closeModal('start-modal');
-  document.getElementById('session-status-badge').innerHTML = '● LIVE';
-  document.getElementById('session-status-badge').style.background = 'rgba(233,69,96,0.3)';
-  document.getElementById('session-status-badge').style.color = '#f87197';
-  document.getElementById('live-pulse').style.background = '#4ade80';
-  document.getElementById('live-status-text').textContent = '세션 진행 중';
-  document.getElementById('live-event-name-display').textContent = eventName;
-  document.getElementById('start-session-btn').style.display = 'none';
-  document.getElementById('live-controls').style.display = 'flex';
-  refreshLiveQList();
+  setLiveUI(true);
+  subscribeRealtime(state.sessionId);
+  btn.textContent = '▶ 시작'; btn.disabled = false;
 }
 
+async function endSession() {
+  if (!confirm('세션을 종료하시겠습니까?')) return;
+  await sb.from('sessions').update({ is_active: false }).eq('id', state.sessionId);
+  state.sessionActive = false;
+  setLiveUI(false);
+  if (state.realtimeChannel) { sb.removeChannel(state.realtimeChannel); state.realtimeChannel = null; }
+}
+
+function setLiveUI(live) {
+  document.getElementById('session-status-badge').innerHTML = live ? '● LIVE' : '● 대기';
+  document.getElementById('session-status-badge').style.background = live ? 'rgba(233,69,96,0.3)' : 'rgba(255,255,255,0.08)';
+  document.getElementById('live-pulse').style.background = live ? '#4ade80' : '#9ca3af';
+  document.getElementById('live-status-text').textContent = live ? '세션 진행 중' : '세션 대기 중';
+  document.getElementById('live-event-name-display').textContent = document.getElementById('ev-name').value;
+  document.getElementById('start-session-btn').style.display = live ? 'none' : 'inline-flex';
+  document.getElementById('start-session-btn2').style.display = live ? 'none' : 'inline-flex';
+  document.getElementById('live-controls').style.display = live ? 'flex' : 'none';
+  document.getElementById('live-participant-wrap').style.display = live ? 'block' : 'none';
+}
+
+// ============================================================
+// REALTIME — 참여자 수 실시간
+// ============================================================
 function subscribeRealtime(sessionId) {
-  // 참여자 수 (attendance INSERT)
-  sb.channel('admin-realtime')
-    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'attendance', filter: `session_id=eq.${sessionId}` }, () => {
-      state.participants.add(Date.now());
-      const cnt = state.participants.size;
-      document.getElementById('live-realtime-count').textContent = cnt;
-      document.getElementById('live-attendee-count').textContent = '참여자 ' + cnt + '명';
+  if (state.realtimeChannel) sb.removeChannel(state.realtimeChannel);
+  state.realtimeChannel = sb.channel('admin-rt-' + sessionId)
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'attendance', filter: `session_id=eq.${sessionId}` }, async () => {
+      await refreshParticipantCount(sessionId);
     })
-    // 응답 INSERT → 진행 중 문항 응답률 업데이트
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'responses', filter: `session_id=eq.${sessionId}` }, async () => {
       if (!state.activeQuestion?.dbId) return;
-      const { count } = await sb.from('responses').select('*', { count: 'exact', head: true }).eq('question_id', state.activeQuestion.dbId);
-      const total = Math.max(state.participants.size, 1);
-      const pct = Math.round((count || 0) / total * 100);
-      const el1 = document.getElementById('resp-progress');
-      const el2 = document.getElementById('resp-count');
-      const el3 = document.getElementById('resp-pct');
-      if (el1) el1.style.width = pct + '%';
-      if (el2) el2.textContent = '응답 ' + (count || 0) + '명';
-      if (el3) el3.textContent = pct + '%';
+      await refreshResponseCount(state.activeQuestion.dbId, sessionId);
     })
-    // UpFlow INSERT
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'upflows', filter: `session_id=eq.${sessionId}` }, async () => {
       await loadUpflows();
     })
-    // UpFlow UPDATE (vote_count 변경)
     .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'upflows', filter: `session_id=eq.${sessionId}` }, async () => {
       await loadUpflows();
     })
     .subscribe();
+
+  // 초기 참여자 수 로드
+  refreshParticipantCount(sessionId);
 }
 
-async function endSession() {
-  if(!confirm('세션을 종료하시겠습니까?')) return;
-  if (state.sessionId) {
-    await sb.from('sessions').update({ is_active: false }).eq('id', state.sessionId);
-  }
-  state.sessionActive = false;
-  document.getElementById('session-status-badge').innerHTML = '● 종료됨';
-  document.getElementById('session-status-badge').style.background = 'rgba(255,255,255,0.1)';
-  document.getElementById('session-status-badge').style.color = 'rgba(255,255,255,0.5)';
-  document.getElementById('live-pulse').style.background = '#9ca3af';
-  document.getElementById('live-status-text').textContent = '세션 종료됨';
-  document.getElementById('start-session-btn').style.display = 'inline-flex';
-  document.getElementById('live-controls').style.display = 'none';
+async function refreshParticipantCount(sessionId) {
+  const { count } = await sb.from('attendance').select('*', { count: 'exact', head: true }).eq('session_id', sessionId);
+  state.participantCount = count || 0;
+  document.getElementById('participant-count').textContent = state.participantCount;
+  document.getElementById('live-realtime-count').textContent = state.participantCount;
+}
+
+async function refreshResponseCount(questionDbId, sessionId) {
+  const { count } = await sb.from('responses').select('*', { count: 'exact', head: true }).eq('question_id', questionDbId);
+  const total = Math.max(state.participantCount, 1);
+  const pct = Math.round((count || 0) / total * 100);
+  const el1 = document.getElementById('resp-progress');
+  const el2 = document.getElementById('resp-count');
+  const el3 = document.getElementById('resp-pct');
+  if (el1) el1.style.width = pct + '%';
+  if (el2) el2.textContent = '응답 ' + (count||0) + '명';
+  if (el3) el3.textContent = pct + '%';
 }
 
 // ============================================================
@@ -849,18 +926,16 @@ async function endSession() {
 // ============================================================
 function refreshLiveQList() {
   const container = document.getElementById('live-q-list');
-  if(state.questions.length === 0) {
-    container.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted);font-size:13px">문항을 먼저 등록해주세요</div>';
-    return;
-  }
+  if (!state.questions.length) { container.innerHTML = '<div style="padding:14px;text-align:center;color:var(--muted);font-size:13px">문항을 먼저 등록해주세요</div>'; return; }
   container.innerHTML = state.questions.map((q,i) => {
-    const status = state.responses[q.id] ? 'done' : (state.activeQuestion?.id === q.id ? 'live' : 'waiting');
-    const labels = {waiting:'대기',live:'진행 중',done:'완료'};
-    const cls = {waiting:'status-waiting',live:'status-live',done:'status-done'};
-    return `<div class="q-list-item ${status==='live'?'active-q':''} ${status==='done'?'done':''}" onclick="selectLiveQ(${i})">
+    const isActive = state.activeQuestion?.id === q.id;
+    const isDone = state.responses[q.id];
+    const statusCls = isDone ? 'status-done' : isActive ? 'status-live' : 'status-waiting';
+    const statusTxt = isDone ? '완료' : isActive ? '진행중' : '대기';
+    return `<div class="q-list-item ${isActive?'active-q':''} ${isDone?'done':''}" onclick="selectLiveQ(${i})">
       <span class="q-list-num">${i+1}</span>
-      <span class="q-list-text">${q.text||'(문항 내용 없음)'}</span>
-      <span class="q-list-status ${cls[status]}">${labels[status]}</span>
+      <span class="q-list-text">${q.text||'(내용 없음)'}</span>
+      <span class="q-list-status ${statusCls}">${statusTxt}</span>
     </div>`;
   }).join('');
 }
@@ -873,107 +948,59 @@ function selectLiveQ(i) {
 
 function renderCurrentQ(q) {
   state.activeQuestion = q;
-  const typeLabel = {mc:'객관식',open:'주관식',word:'워드클라우드'}[q.type];
+  const tl = {mc:'객관식',open:'주관식',word:'워드클라우드'}[q.type];
   const letters = ['A','B','C','D','E'];
-  const mockResponses = q.type === 'mc' ? q.options.map((_,i) => Math.floor(Math.random()*30+5)) : [];
-  const total = mockResponses.reduce((a,b)=>a+b,0)||1;
-
   let resultsHtml = '';
-  if(q.type === 'mc' && q.options.length > 0) {
-    resultsHtml = `<div class="results-bars">` + q.options.map((opt,i) => {
-      const pct = Math.round(mockResponses[i]/total*100);
-      return `<div class="result-item">
-        <div class="result-label"><span>${letters[i]}. ${opt||'선택지'}</span><span>${mockResponses[i]}명 (${pct}%)</span></div>
-        <div class="result-bar-wrap"><div class="result-bar-fill" style="width:${pct}%"><span>${pct}%</span></div></div>
-      </div>`;
-    }).join('') + '</div>';
+  if (q.type === 'mc' && q.options.length) {
+    const mock = q.options.map(() => 0);
+    resultsHtml = `<div class="results-bars">${q.options.map((opt,i)=>`
+      <div class="result-item">
+        <div class="result-label"><span>${letters[i]}. ${opt||'선택지'}</span><span>0명</span></div>
+        <div class="result-bar-wrap"><div class="result-bar-fill" style="width:0%"><span></span></div></div>
+      </div>`).join('')}</div>`;
   }
-
   document.getElementById('current-q-area').innerHTML = `
     <div class="current-q-card">
-      <div class="current-q-label">🎯 선택된 문항 — ${typeLabel}</div>
-      <div class="current-q-text">${q.text||'(문항 내용 없음)'}</div>
+      <div class="current-q-label">🎯 선택된 문항 — ${tl}</div>
+      <div class="current-q-text">${q.text||'(내용 없음)'}</div>
       <div class="progress-bar-wrap"><div class="progress-bar-fill" id="resp-progress" style="width:0%"></div></div>
-      <div class="progress-label">
-        <span id="resp-count">응답 0명</span>
-        <span id="resp-pct">0%</span>
-      </div>
+      <div class="progress-label"><span id="resp-count">응답 0명</span><span id="resp-pct">0%</span></div>
       ${resultsHtml}
-    </div>
-  `;
+    </div>`;
 }
 
 async function launchQuestion() {
-  if(state.currentQIndex < 0 || !state.sessionActive) {
-    alert(state.sessionActive ? '문항을 선택해주세요' : '세션을 먼저 시작해주세요');
-    return;
-  }
+  if (state.currentQIndex < 0 || !state.sessionActive) { alert(state.sessionActive ? '문항을 선택해주세요' : '세션을 먼저 시작해주세요'); return; }
   const q = state.questions[state.currentQIndex];
   state.activeQuestion = q;
-
-  // 이전 활성 문항 비활성화
-  if (state.sessionId) {
-    await sb.from('questions').update({ is_active: false }).eq('session_id', state.sessionId);
-    // 현재 문항 활성화
-    if (q.dbId) {
-      await sb.from('questions').update({ is_active: true, is_closed: false }).eq('id', q.dbId);
-    }
-  }
+  await sb.from('questions').update({ is_active: false }).eq('session_id', state.sessionId);
+  if (q.dbId) await sb.from('questions').update({ is_active: true, is_closed: false }).eq('id', q.dbId);
   refreshLiveQList();
 }
 
 async function closeQuestion() {
-  if(!state.activeQuestion) return;
-  if (state.activeQuestion.dbId) {
-    await sb.from('questions').update({ is_active: false, is_closed: true }).eq('id', state.activeQuestion.dbId);
-  }
+  if (!state.activeQuestion) return;
+  if (state.activeQuestion.dbId) await sb.from('questions').update({ is_active: false, is_closed: true }).eq('id', state.activeQuestion.dbId);
   state.responses[state.activeQuestion.id] = true;
-  refreshLiveQList();
-  document.getElementById('current-q-area').innerHTML = `<div class="empty" style="background:var(--surface);border:1px solid var(--border);border-radius:12px"><div class="empty-icon">✅</div><div class="empty-title">문항 마감 완료</div><div class="empty-sub">다음 문항을 선택해주세요</div></div>`;
   state.activeQuestion = null;
+  refreshLiveQList();
+  document.getElementById('current-q-area').innerHTML = `<div class="empty" style="background:var(--surface);border:1px solid var(--border);border-radius:12px"><div class="empty-icon">✅</div><div class="empty-title">문항 마감 완료</div></div>`;
 }
 
 async function toggleResults() {
-  if (!state.activeQuestion?.dbId) { alert('진행 중인 문항이 없습니다'); return; }
-  const { data: q } = await sb.from('questions').select('show_result').eq('id', state.activeQuestion.dbId).single();
-  const newVal = !q.show_result;
-  await sb.from('questions').update({ show_result: newVal }).eq('id', state.activeQuestion.dbId);
-  alert('결과 ' + (newVal ? '공개' : '비공개') + '로 변경되었습니다');
+  if (!state.activeQuestion?.dbId) return;
+  const { data } = await sb.from('questions').select('show_result').eq('id', state.activeQuestion.dbId).single();
+  const nv = !data.show_result;
+  await sb.from('questions').update({ show_result: nv }).eq('id', state.activeQuestion.dbId);
+  alert('결과 ' + (nv?'공개':'비공개') + '로 변경');
 }
-function prevQuestion() { if(state.currentQIndex > 0) selectLiveQ(state.currentQIndex-1); }
-function nextQuestion() { if(state.currentQIndex < state.questions.length-1) selectLiveQ(state.currentQIndex+1); }
+
+function prevQuestion() { if (state.currentQIndex > 0) selectLiveQ(state.currentQIndex - 1); }
+function nextQuestion() { if (state.currentQIndex < state.questions.length - 1) selectLiveQ(state.currentQIndex + 1); }
 
 // ============================================================
 // UPFLOW
 // ============================================================
-function renderUpflow() {
-  const list = document.getElementById('upflow-list');
-  document.getElementById('upflow-total').textContent = state.upflows.length;
-  document.getElementById('upflow-pending').textContent = state.upflows.filter(u=>!u.answered).length;
-  document.getElementById('upflow-answered').textContent = state.upflows.filter(u=>u.answered).length;
-  if(state.upflows.length === 0) {
-    list.innerHTML = `<div class="empty"><div class="empty-icon">💬</div><div class="empty-title">질문이 없습니다</div></div>`;
-    return;
-  }
-  list.innerHTML = state.upflows.map(u => `
-    <div class="upflow-item">
-      <div class="upflow-votes">
-        <div class="vote-count">${u.votes}</div>
-        <div class="vote-label">추천</div>
-      </div>
-      <div class="upflow-content">
-        <div class="upflow-text">${u.text}</div>
-        <div class="upflow-meta">${u.time} ${u.answered ? '✅ 답변 완료' : '• 미답변'}</div>
-        <div class="upflow-actions">
-          ${!u.answered ? `<button class="btn btn-success btn-sm" onclick="markAnswered(${u.id})">답변 완료</button>` : ''}
-          <button class="btn btn-secondary btn-sm" onclick="highlightQ(${u.id})">💡 화면 강조</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteUpflow(${u.id})">삭제</button>
-        </div>
-      </div>
-    </div>
-  `).join('');
-}
-
 async function loadUpflows() {
   if (!state.sessionId) return;
   const { data } = await sb.from('upflows').select('*').eq('session_id', state.sessionId).order('vote_count', { ascending: false });
@@ -984,81 +1011,97 @@ async function loadUpflows() {
   }));
   renderUpflow();
 }
+
+function renderUpflow() {
+  document.getElementById('upflow-total').textContent = state.upflows.length;
+  document.getElementById('upflow-pending').textContent = state.upflows.filter(u=>!u.answered).length;
+  document.getElementById('upflow-answered').textContent = state.upflows.filter(u=>u.answered).length;
+  const list = document.getElementById('upflow-list');
+  if (!state.upflows.length) { list.innerHTML = `<div class="empty"><div class="empty-icon">💬</div><div class="empty-title">질문이 없습니다</div></div>`; return; }
+  list.innerHTML = state.upflows.map(u => `
+    <div class="upflow-item">
+      <div class="upflow-votes"><div class="vote-count">${u.votes}</div><div class="vote-label">추천</div></div>
+      <div style="flex:1">
+        <div class="upflow-text">${u.text}</div>
+        <div class="upflow-meta">${u.time} ${u.answered?'✅ 답변완료':'• 미답변'}</div>
+        <div class="upflow-actions">
+          ${!u.answered?`<button class="btn btn-success btn-sm" onclick="markAnswered('${u.id}')">답변완료</button>`:''}
+          <button class="btn btn-danger btn-sm" onclick="deleteUpflow('${u.id}')">삭제</button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
 function sortUpflow(by) {
-  if(by==='votes') state.upflows.sort((a,b)=>b.votes-a.votes);
+  if (by==='votes') state.upflows.sort((a,b)=>b.votes-a.votes);
   else state.upflows.sort((a,b)=>b.time.localeCompare(a.time));
   renderUpflow();
 }
-async function markAnswered(id) {
-  await sb.from('upflows').update({ is_answered: true }).eq('id', id);
-  await loadUpflows();
-}
-async function deleteUpflow(id) {
-  await sb.from('upflows').delete().eq('id', id);
-  await loadUpflows();
-}
-function highlightQ(id) { alert('display.html에 해당 질문이 강조 표시됩니다'); }
+async function markAnswered(id) { await sb.from('upflows').update({ is_answered: true }).eq('id', id); await loadUpflows(); }
+async function deleteUpflow(id) { await sb.from('upflows').delete().eq('id', id); await loadUpflows(); }
 
 // ============================================================
 // ATTENDANCE
 // ============================================================
+async function loadAttendance() {
+  if (!state.sessionId) return;
+  const { data } = await sb.from('attendance').select('*').eq('session_id', state.sessionId).order('created_at');
+  state.attendees = data || [];
+  renderAttendance();
+}
+
 function renderAttendance() {
-  const grid = document.getElementById('attendance-grid');
-  const present = state.attendees.filter(a=>a.checked).length;
+  const present = state.attendees.filter(a=>a.checked_at).length;
   document.getElementById('att-total').textContent = state.attendees.length;
   document.getElementById('att-present').textContent = present;
   document.getElementById('att-absent').textContent = state.attendees.length - present;
   document.getElementById('att-rate').textContent = state.attendees.length ? Math.round(present/state.attendees.length*100)+'%' : '0%';
-  
-  if(state.attendees.length === 0) {
-    grid.innerHTML = `<div style="grid-column:1/-1" class="empty"><div class="empty-icon">✅</div><div class="empty-title">참석자가 없습니다</div><div class="empty-sub">참석자를 추가하거나 청중이 QR로 접속하면 자동 등록됩니다</div></div>`;
-    return;
-  }
   const q = document.getElementById('att-search')?.value.toLowerCase()||'';
-  const filtered = state.attendees.filter(a=>a.name.toLowerCase().includes(q));
+  const filtered = state.attendees.filter(a => (a.participant_name||'').toLowerCase().includes(q));
+  const grid = document.getElementById('attendance-grid');
+  if (!filtered.length) { grid.innerHTML = `<div style="grid-column:1/-1" class="empty"><div class="empty-icon">✅</div><div class="empty-title">출석 데이터 없음</div></div>`; return; }
   grid.innerHTML = filtered.map(a => `
-    <div class="attendee-card ${a.checked?'checked':''}" onclick="toggleAttendee('${a.id}')">
-      <div class="attendee-avatar" style="background:${a.checked?'var(--success)':'var(--accent2)'}">
-        ${a.name.charAt(0)}
-      </div>
-      <div class="attendee-name">${a.name}</div>
-      <div class="attendee-status">${a.org||''} ${a.checked?'✅ 출석':'대기 중'}</div>
-    </div>
-  `).join('');
+    <div class="attendee-card ${a.checked_at?'checked':''}">
+      <div class="attendee-avatar">${(a.participant_name||'?').charAt(0)}</div>
+      <div class="attendee-name">${a.participant_name||'익명'}</div>
+      <div class="attendee-status">${a.checked_at ? '✅ ' + new Date(a.checked_at).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}) : '대기중'}</div>
+    </div>`).join('');
 }
 
-function toggleAttendee(id) {
-  const a = state.attendees.find(a=>a.id===id);
-  if(a) { a.checked = !a.checked; renderAttendance(); }
-}
 function filterAttendees() { renderAttendance(); }
-function openAddAttendeeModal() { document.getElementById('attendee-modal').classList.add('open'); }
-function addAttendee() {
-  const name = document.getElementById('new-attendee-name').value.trim();
-  const org = document.getElementById('new-attendee-org').value.trim();
-  if(!name) { alert('이름을 입력해주세요'); return; }
-  state.attendees.push({id: Date.now().toString(), name, org, checked:false});
-  closeModal('attendee-modal');
-  document.getElementById('new-attendee-name').value = '';
-  document.getElementById('new-attendee-org').value = '';
-  renderAttendance();
+function exportAttendance() { alert('엑셀 다운로드 기능 준비 중'); }
+function exportResults() { alert('결과 다운로드 기능 준비 중'); }
+
+// ============================================================
+// TAB
+// ============================================================
+function switchTab(name, el) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('#event-nav-items .nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  if (el) el.classList.add('active');
+  const titles = {setup:'행사 세팅',questions:'문항 관리',live:'라이브 진행',upflow:'청중 질문',attendance:'출석 현황',results:'결과 분석'};
+  document.getElementById('topbar-title').textContent = titles[name] || name;
+  if (name==='live') refreshLiveQList();
+  if (name==='upflow') loadUpflows();
+  if (name==='attendance') loadAttendance();
 }
-function exportAttendance() { alert('출석 데이터 CSV 다운로드 (Supabase 연동 후 실제 데이터 내보내기 가능)'); }
-function exportResults() { alert('결과 데이터 엑셀 다운로드 (Supabase 연동 후 실제 데이터 내보내기 가능)'); }
-function printResults() { window.print(); }
+
+function switchTabByName(name) {
+  const btns = document.querySelectorAll('#event-nav-items .nav-item');
+  const tabMap = ['setup','questions','live','upflow','attendance','results'];
+  // setup은 0번째
+  switchTab(name, null);
+  btns.forEach((b,i) => b.classList.toggle('active', tabMap[i]===name));
+}
 
 // ============================================================
 // MODAL
 // ============================================================
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 document.querySelectorAll('.modal-overlay').forEach(m => {
-  m.addEventListener('click', e => { if(e.target === m) m.classList.remove('open'); });
+  m.addEventListener('click', e => { if (e.target===m) m.classList.remove('open'); });
 });
-
-// ============================================================
-// INIT
-// ============================================================
-genCode();
 </script>
 </body>
 </html>
