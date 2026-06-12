@@ -656,7 +656,8 @@ function showAsk() {
 async function renderAskList() {
   if (app.sessionId) {
     const { data } = await sb.from('upflows').select('*').eq('session_id', app.sessionId).order('vote_count', { ascending: false });
-    app.upflows = (data || []).map(u => ({ id: u.id, text: u.text, votes: u.vote_count, voted: false }));
+    const votedSet = getVotedSet();
+    app.upflows = (data || []).map(u => ({ id: u.id, text: u.text, votes: u.vote_count, voted: votedSet.has(u.id) }));
   }
   const list = document.getElementById('ask-list');
   if (!app.upflows.length) { list.innerHTML = '<div style="text-align:center;padding:32px;color:var(--muted)">아직 질문이 없습니다</div>'; return; }
@@ -682,15 +683,31 @@ async function sendQuestion() {
   await renderAskList();
 }
 
+function getVotedSet() {
+  try {
+    const key = 'voted_' + app.sessionId;
+    return new Set(JSON.parse(localStorage.getItem(key) || '[]'));
+  } catch { return new Set(); }
+}
+
+function saveVote(id, voted) {
+  try {
+    const key = 'voted_' + app.sessionId;
+    const set = getVotedSet();
+    if (voted) set.add(id); else set.delete(id);
+    localStorage.setItem(key, JSON.stringify([...set]));
+  } catch {}
+}
+
 async function voteQuestion(id) {
   const u = app.upflows.find(u=>u.id===id);
   if(!u) return;
   if(u.voted) {
     await sb.from('upflows').update({ vote_count: Math.max(0, u.votes-1) }).eq('id', id);
-    u.voted = false;
+    saveVote(id, false);
   } else {
     await sb.from('upflows').update({ vote_count: u.votes+1 }).eq('id', id);
-    u.voted = true;
+    saveVote(id, true);
   }
   await renderAskList();
 }
