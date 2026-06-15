@@ -164,8 +164,8 @@
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-const SUPABASE_URL = "https://fogpqsojmhlhmlkmjrrw.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZvZ3Bxc29qbWhsaG1sa21qcnJ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMjg3OTAsImV4cCI6MjA5NTYwNDc5MH0.DYSjshv6tOHi8AUrSurgJd8obbTvWodmFrKDdUfDtbQ";
+const SUPABASE_URL = "https://ibeaiiizgqtlzkeqlsdg.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImliZWFpaWl6Z3F0bHprZXFsc2RnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1NTk2OTYsImV4cCI6MjA5NjEzNTY5Nn0.KU4eYmhpS0dduvtxRRZuPbsEu1PrFgYVK-GGzDfTqvc";
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 </script>
 </head>
@@ -338,7 +338,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   try {
     const { code, name, sessionId } = JSON.parse(saved);
     // Supabase에서 세션 아직 활성인지 확인
-    const { data: session, error } = await sb.from('sessions')
+    const { data: session, error } = await sb.from('ars_sessions')
       .select('*').eq('id', sessionId).eq('is_active', true).single();
     if (error || !session) { localStorage.removeItem('ars_session'); return; }
     // 복원
@@ -348,7 +348,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     app.sessionData = session;
     app.accessLogged = true;
     // 문항 로드
-    const { data: questions } = await sb.from('questions')
+    const { data: questions } = await sb.from('ars_questions')
       .select('*').eq('session_id', session.id).order('sort_order');
     app.questions = (questions || []).map(q => ({
       id: q.id, type: q.type, text: q.text,
@@ -378,7 +378,7 @@ async function joinSession() {
   const joinBtn = document.querySelector('.join-btn');
   joinBtn.textContent = '확인 중...'; joinBtn.disabled = true;
 
-  const { data: session, error } = await sb.from('sessions')
+  const { data: session, error } = await sb.from('ars_sessions')
     .select('*').eq('access_code', code).eq('is_active', true).single();
 
   if (error || !session) {
@@ -398,7 +398,7 @@ async function joinSession() {
   }));
 
   // 문항 로드
-  const { data: questions } = await sb.from('questions')
+  const { data: questions } = await sb.from('ars_questions')
     .select('*').eq('session_id', session.id).order('sort_order');
   app.questions = (questions || []).map(q => ({
     id: q.id, type: q.type, text: q.text,
@@ -420,7 +420,7 @@ async function joinSession() {
 
 function subscribeQuestions(sessionId) {
   sb.channel('audience-questions')
-    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'sessions', filter: `id=eq.${sessionId}` }, (payload) => {
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'ars_sessions', filter: `id=eq.${sessionId}` }, (payload) => {
       // 세션 종료 시 localStorage 클리어 후 입장 화면으로
       if (!payload.new.is_active) {
         localStorage.removeItem('ars_session');
@@ -428,7 +428,7 @@ function subscribeQuestions(sessionId) {
         location.reload();
       }
     })
-    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'questions', filter: `session_id=eq.${sessionId}` }, (payload) => {
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'ars_questions', filter: `session_id=eq.${sessionId}` }, (payload) => {
       const q = payload.new;
       const idx = app.questions.findIndex(x => x.id === q.id);
       if (idx >= 0) {
@@ -471,7 +471,7 @@ function enterHome() {
   // 접속 기록 → 관리자 실시간 참여자 수 반영
   if (app.sessionId && !app.accessLogged) {
     app.accessLogged = true;
-    sb.from('attendance').insert({
+    sb.from('ars_attendance').insert({
       session_id: app.sessionId,
       participant_name: app.name,
       checked_at: null
@@ -583,7 +583,7 @@ async function submitAnswer(auto=false) {
 
   // Supabase에 응답 저장
   if (app.sessionId) {
-    await sb.from('responses').insert({
+    await sb.from('ars_responses').insert({
       session_id: app.sessionId,
       question_id: q.id,
       participant_name: app.name,
@@ -614,7 +614,7 @@ async function submitAnswer(auto=false) {
 async function showResults(q) {
   let mcData = [];
   if (q.type === 'mc' && app.sessionId) {
-    const { data: resps } = await sb.from('responses').select('answer_index').eq('question_id', q.id);
+    const { data: resps } = await sb.from('ars_responses').select('answer_index').eq('question_id', q.id);
     const counts = new Array(q.options.length).fill(0);
     (resps || []).forEach(r => { if (r.answer_index !== null) counts[r.answer_index]++; });
     const total = counts.reduce((a,b)=>a+b,0) || 1;
@@ -640,7 +640,7 @@ async function showResults(q) {
       </div>`;
     }).join('');
   } else if(q.type === 'word') {
-    const { data: resps } = await sb.from('responses').select('answer').eq('question_id', q.id);
+    const { data: resps } = await sb.from('ars_responses').select('answer').eq('question_id', q.id);
     const wordMap = {};
     (resps||[]).forEach(r => { if(r.answer) { const w = r.answer.trim(); wordMap[w] = (wordMap[w]||0)+1; } });
     const sorted = Object.entries(wordMap).sort((a,b)=>b[1]-a[1]).slice(0,15);
@@ -699,7 +699,7 @@ function showAsk() {
 
 async function renderAskList() {
   if (app.sessionId) {
-    const { data } = await sb.from('upflows').select('*').eq('session_id', app.sessionId).order('vote_count', { ascending: false });
+    const { data } = await sb.from('ars_upflows').select('*').eq('session_id', app.sessionId).order('vote_count', { ascending: false });
     const votedSet = getVotedSet();
     app.upflows = (data || []).map(u => ({ id: u.id, text: u.text, votes: u.vote_count, voted: votedSet.has(u.id) }));
   }
@@ -722,7 +722,7 @@ async function renderAskList() {
 async function sendQuestion() {
   const text = document.getElementById('ask-input').value.trim();
   if(!text || !app.sessionId) return;
-  await sb.from('upflows').insert({ session_id: app.sessionId, participant_name: app.name, text, vote_count: 0 });
+  await sb.from('ars_upflows').insert({ session_id: app.sessionId, participant_name: app.name, text, vote_count: 0 });
   document.getElementById('ask-input').value = '';
   await renderAskList();
 }
@@ -747,10 +747,10 @@ async function voteQuestion(id) {
   const u = app.upflows.find(u=>u.id===id);
   if(!u) return;
   if(u.voted) {
-    await sb.from('upflows').update({ vote_count: Math.max(0, u.votes-1) }).eq('id', id);
+    await sb.from('ars_upflows').update({ vote_count: Math.max(0, u.votes-1) }).eq('id', id);
     saveVote(id, false);
   } else {
-    await sb.from('upflows').update({ vote_count: u.votes+1 }).eq('id', id);
+    await sb.from('ars_upflows').update({ vote_count: u.votes+1 }).eq('id', id);
     saveVote(id, true);
   }
   await renderAskList();
@@ -766,13 +766,13 @@ async function checkAttendance() {
   app.attendanceChecked = true;
   if (app.sessionId) {
     // 접속 시 이미 INSERT된 레코드에 checked_at 업데이트
-    const { data: existing } = await sb.from('attendance')
+    const { data: existing } = await sb.from('ars_attendance')
       .select('id').eq('session_id', app.sessionId)
       .eq('participant_name', app.name).is('checked_at', null).single();
     if (existing) {
-      await sb.from('attendance').update({ checked_at: new Date().toISOString() }).eq('id', existing.id);
+      await sb.from('ars_attendance').update({ checked_at: new Date().toISOString() }).eq('id', existing.id);
     } else {
-      await sb.from('attendance').insert({
+      await sb.from('ars_attendance').insert({
         session_id: app.sessionId, participant_name: app.name,
         checked_at: new Date().toISOString()
       });
