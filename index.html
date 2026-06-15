@@ -524,7 +524,9 @@ function renderEventCards() {
         <span>👥 ${ev.capacity || '—'}명</span>
       </div>
       <div class="event-card-actions" onclick="event.stopPropagation()">
-        <button class="btn btn-primary btn-sm" onclick="enterEvent('${ev.id}')">운영하기</button>
+        <button class="btn btn-primary btn-sm" onclick="enterEvent('${ev.id}')">⚙️ 운영하기</button>
+        <button class="btn btn-blue btn-sm" onclick="window.open('https://starbucks-judge.github.io/planbag-ars/audience.html?code=${ev.access_code}','_blank')">📱 청중참여</button>
+        <button class="btn btn-secondary btn-sm" onclick="window.open('https://starbucks-judge.github.io/planbag-ars/display.html?code=${ev.access_code}','_blank')">🖥️ 디스플레이</button>
         <button class="btn btn-danger btn-sm" onclick="deleteEvent('${ev.id}')">삭제</button>
       </div>
     </div>`;
@@ -544,17 +546,29 @@ async function createEvent() {
   const name = document.getElementById('m-name').value.trim();
   if (!name) { alert('행사명을 입력해주세요'); return; }
   const code = Math.random().toString(36).substr(2,6).toUpperCase();
-  const { data, error } = await sb.from('sessions').insert({
+
+  const insertData = {
     event_name: name,
-    org_name: document.getElementById('m-org').value.trim(),
-    event_date: document.getElementById('m-date').value || null,
-    capacity: parseInt(document.getElementById('m-capacity').value) || null,
     access_code: code,
     result_visibility: 'after',
     allow_anonymous: true,
     is_active: false
-  }).select().single();
-  if (error) { alert('행사 생성 실패: ' + error.message); return; }
+  };
+
+  // migration 완료된 경우만 추가 컬럼 삽입
+  const orgVal = document.getElementById('m-org').value.trim();
+  const dateVal = document.getElementById('m-date').value;
+  const capVal = parseInt(document.getElementById('m-capacity').value);
+  if (orgVal) insertData.org_name = orgVal;
+  if (dateVal) insertData.event_date = dateVal;
+  if (capVal) insertData.capacity = capVal;
+
+  const { data, error } = await sb.from('sessions').insert(insertData).select().single();
+  if (error) {
+    console.error(error);
+    alert('행사 생성 실패: ' + error.message + '\n\nSupabase SQL Editor에서 migration.sql을 먼저 실행해주세요.');
+    return;
+  }
   closeModal('event-modal');
   await loadEvents();
   enterEvent(data.id);
