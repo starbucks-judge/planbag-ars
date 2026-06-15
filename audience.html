@@ -421,7 +421,6 @@ async function joinSession() {
 function subscribeQuestions(sessionId) {
   sb.channel('audience-questions')
     .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'ars_sessions', filter: `id=eq.${sessionId}` }, (payload) => {
-      // 세션 종료 시 localStorage 클리어 후 입장 화면으로
       if (!payload.new.is_active) {
         localStorage.removeItem('ars_session');
         alert('행사가 종료되었습니다');
@@ -434,10 +433,33 @@ function subscribeQuestions(sessionId) {
       if (idx >= 0) {
         app.questions[idx] = { ...app.questions[idx], isActive: q.is_active, isClosed: q.is_closed, showResult: q.show_result };
       }
-      // 새 문항 출제되면 화면이 question이면 자동 렌더
-      if (q.is_active && document.getElementById('screen-question').classList.contains('active')) {
+
+      const onQuestionScreen = document.getElementById('screen-question').classList.contains('active');
+      const onHomeScreen = document.getElementById('screen-home').classList.contains('active');
+
+      if (q.is_active) {
+        // 새 문항 출제 → 퀴즈 화면으로 자동 이동
         const qi = app.questions.findIndex(x => x.id === q.id);
-        if (qi >= 0) { app.currentQ = qi; app.answered = false; renderQuestion(); }
+        if (qi >= 0) {
+          app.currentQ = qi;
+          app.answered = false;
+          showScreen('question');
+          renderQuestion();
+        }
+      } else if (q.is_closed) {
+        // 문항 마감 → 현재 퀴즈 화면에 있고 미응답이면 자동 제출 처리
+        if (onQuestionScreen && !app.answered) {
+          submitAnswer(true);
+        } else if (onQuestionScreen && app.answered && !q.show_result) {
+          // 결과 비공개면 홈으로
+          setTimeout(() => goHome(), 1500);
+        }
+      } else if (!q.is_active && !q.is_closed) {
+        // 모든 문항 비활성 → 홈으로
+        const anyActive = app.questions.some(x => x.isActive);
+        if (!anyActive && onQuestionScreen) {
+          setTimeout(() => goHome(), 800);
+        }
       }
     })
     .subscribe();

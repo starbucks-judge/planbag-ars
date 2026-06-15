@@ -3,255 +3,519 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>플랜백 ARS — 결과 화면</title>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700;800;900&display=swap');
-  *{box-sizing:border-box;margin:0;padding:0}
-  :root{
-    --bg:#0d1117;--surface:#161b22;--border:#21262d;
-    --accent:#e94560;--accent2:#3b82f6;--success:#10b981;
-    --text:#f0f6fc;--muted:#8b949e;
-  }
-  html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Pretendard',sans-serif;overflow:hidden}
-  
-  /* SCREENS */
-  .dscreen{display:none;position:absolute;inset:0}
-  .dscreen.active{display:flex}
-
-  /* STANDBY */
-  .standby{background:radial-gradient(ellipse at 50% 100%, #0f3460 0%, #0d1117 60%);align-items:center;justify-content:center;flex-direction:column;text-align:center}
-  .standby-logo{font-size:72px;margin-bottom:32px;filter:drop-shadow(0 0 40px rgba(233,69,96,0.4))}
-  .standby-title{font-size:64px;font-weight:900;color:#fff;letter-spacing:-2px;margin-bottom:12px}
-  .standby-sub{font-size:24px;color:rgba(255,255,255,0.4);margin-bottom:48px}
-  .standby-code-wrap{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:24px;padding:28px 56px}
-  .standby-code-label{font-size:16px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:3px;margin-bottom:8px}
-  .standby-code{font-size:72px;font-weight:900;letter-spacing:16px;color:var(--accent)}
-  .standby-url{font-size:20px;color:rgba(255,255,255,0.35);margin-top:20px}
-  .standby-count{font-size:18px;color:rgba(255,255,255,0.5);margin-top:28px}
-  .standby-count span{color:#4ade80;font-weight:700}
-  
-  /* QUESTION DISPLAY */
-  .q-display{flex-direction:column;padding:48px 80px}
-  .q-display-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:40px}
-  .q-display-badge{display:flex;align-items:center;gap:10px;background:rgba(233,69,96,0.15);border:1px solid rgba(233,69,96,0.3);border-radius:20px;padding:8px 20px;font-size:16px;font-weight:700;color:var(--accent)}
-  .live-dot{width:10px;height:10px;border-radius:50%;background:var(--accent);animation:blink 1s infinite}
-  @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
-  .q-display-count{font-size:18px;color:var(--muted)}
-  .q-display-count span{color:#fff;font-weight:700}
-  .q-display-time{font-size:48px;font-weight:900;color:var(--accent)}
-  
-  .q-display-text{font-size:52px;font-weight:800;color:#fff;line-height:1.25;margin-bottom:48px;flex:1}
-  
-  /* PROGRESS */
-  .response-progress{background:rgba(255,255,255,0.08);border-radius:12px;height:12px;overflow:hidden;margin-bottom:8px}
-  .response-progress-fill{height:100%;background:linear-gradient(90deg,var(--accent2),var(--accent));border-radius:12px;transition:width .5s ease}
-  .response-label{display:flex;justify-content:space-between;font-size:16px;color:var(--muted)}
-
-  /* MC RESULTS DISPLAY */
-  .mc-results{flex:1;display:flex;flex-direction:column;gap:14px}
-  .mc-result-item{display:flex;align-items:center;gap:20px;animation:slideIn .4s ease forwards;opacity:0}
-  @keyframes slideIn{from{opacity:0;transform:translateX(-20px)}to{opacity:1;transform:translateX(0)}}
-  .mc-letter-big{width:60px;height:60px;border-radius:16px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:var(--muted);flex-shrink:0}
-  .mc-letter-big.winner{background:rgba(16,185,129,0.2);border-color:rgba(16,185,129,0.4);color:#4ade80}
-  .mc-bar-wrap{flex:1}
-  .mc-bar-label{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
-  .mc-bar-text{font-size:22px;font-weight:600;color:#fff}
-  .mc-bar-pct{font-size:28px;font-weight:800;color:var(--accent)}
-  .mc-bar-pct.winner-pct{color:#4ade80}
-  .mc-bar-bg{height:20px;background:rgba(255,255,255,0.06);border-radius:10px;overflow:hidden}
-  .mc-bar-fg{height:100%;border-radius:10px;transition:width .8s cubic-bezier(.4,0,.2,1)}
-  .mc-bar-fg.normal{background:rgba(59,130,246,0.6)}
-  .mc-bar-fg.winner-bar{background:linear-gradient(90deg,#059669,#10b981)}
-  .mc-bar-count{font-size:16px;color:var(--muted);margin-top:4px}
-
-  /* WORDCLOUD DISPLAY */
-  .wc-display{flex:1;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:12px;padding:20px}
-  .wc-word-big{font-weight:800;color:#fff;padding:6px 12px;border-radius:10px;transition:transform .2s}
-  .wc-word-big:nth-child(3n){color:var(--accent)}
-  .wc-word-big:nth-child(3n+1){color:var(--accent2)}
-  .wc-word-big:nth-child(3n+2){color:#4ade80}
-
-  /* OPEN TEXT */
-  .open-display{flex:1;display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;padding:8px 0;overflow:hidden}
-  .open-bubble{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:16px 20px;font-size:18px;color:rgba(255,255,255,0.85);line-height:1.5;animation:fadeUp .5s ease forwards;opacity:0}
-  @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-
-  /* UPFLOW DISPLAY */
-  .upflow-display{flex:1;display:flex;flex-direction:column;gap:14px}
-  .upflow-highlight{background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.3);border-radius:20px;padding:24px 32px;display:flex;align-items:flex-start;gap:20px}
-  .upflow-highlight.top{background:rgba(233,69,96,0.1);border-color:rgba(233,69,96,0.3)}
-  .upflow-highlight-vote{font-size:48px;font-weight:900;color:var(--accent2);text-align:center;min-width:60px}
-  .upflow-highlight.top .upflow-highlight-vote{color:var(--accent)}
-  .upflow-highlight-text{font-size:26px;font-weight:600;color:#fff;line-height:1.4;flex:1}
-
-  /* CONTROLS (hidden in presentation, shown for demo) */
-  .demo-controls{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);display:flex;gap:10px;z-index:100;background:rgba(0,0,0,0.7);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:12px 16px}
-  .ctrl-btn{padding:8px 18px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;border:none;font-family:inherit;transition:all .15s}
-  .ctrl-btn-ghost{background:rgba(255,255,255,0.1);color:#fff}
-  .ctrl-btn-ghost:hover{background:rgba(255,255,255,0.2)}
-  .ctrl-btn-accent{background:var(--accent);color:#fff}
-  .ctrl-btn-accent:hover{background:#d63b54}
-
-  /* TICKER */
-  .ticker{position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.8);border-top:1px solid rgba(255,255,255,0.08);padding:10px 24px;display:flex;align-items:center;gap:16px;font-size:14px}
-  .ticker-label{color:var(--accent);font-weight:700;white-space:nowrap}
-  .ticker-track{overflow:hidden;flex:1}
-  .ticker-content{display:flex;gap:48px;animation:scroll 30s linear infinite;width:max-content}
-  .ticker-item{color:rgba(255,255,255,0.6);white-space:nowrap}
-  @keyframes scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
-</style>
+<title>플랜백 ARS — 디스플레이</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const SUPABASE_URL = "https://ibeaiiizgqtlzkeqlsdg.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImliZWFpaWl6Z3F0bHprZXFsc2RnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1NTk2OTYsImV4cCI6MjA5NjEzNTY5Nn0.KU4eYmhpS0dduvtxRRZuPbsEu1PrFgYVK-GGzDfTqvc";
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 </script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;700;800;900&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:'Pretendard',sans-serif;overflow:hidden;background:#0d1117;color:#fff}
+
+/* 디스플레이 화면 */
+.dscreen{display:none;position:absolute;inset:0;flex-direction:column}
+.dscreen.active{display:flex}
+
+/* 대기화면 */
+#ds-standby{
+  background:var(--ds-bg, #0d1117);
+  align-items:center;justify-content:center;
+  flex-direction:column;text-align:center;
+  position:relative;overflow:hidden;
+}
+.ds-bg-img{position:absolute;inset:0;background-size:cover;background-position:center;opacity:.25}
+.ds-overlay{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 100%, rgba(15,52,96,.6) 0%, transparent 70%)}
+.standby-inner{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center}
+.ds-logo{max-height:80px;max-width:280px;object-fit:contain;margin-bottom:28px;display:none}
+.ds-event-name{font-size:clamp(32px,5vw,72px);font-weight:900;color:#fff;letter-spacing:-1px;line-height:1.2;margin-bottom:8px}
+.ds-org-name{font-size:clamp(16px,2vw,28px);color:rgba(255,255,255,0.5);margin-bottom:40px}
+.ds-qr-section{display:flex;align-items:center;gap:40px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:24px;padding:28px 48px}
+.ds-qr-box{background:#fff;border-radius:12px;padding:12px}
+.ds-qr-box img{width:160px;height:160px;display:block;border-radius:4px}
+.ds-qr-info{}
+.ds-qr-label{font-size:14px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:2px;margin-bottom:8px}
+.ds-qr-url{font-size:16px;color:rgba(255,255,255,0.6);margin-bottom:12px}
+.ds-qr-code{font-size:clamp(40px,6vw,80px);font-weight:900;letter-spacing:10px;color:var(--ds-accent, #e94560);line-height:1}
+.ds-participant-badge{margin-top:20px;display:flex;align-items:center;gap:8px;font-size:20px;color:rgba(255,255,255,0.7)}
+.ds-pulse{width:10px;height:10px;border-radius:50%;background:#4ade80;animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.3)}}
+.ds-count{font-size:28px;font-weight:800;color:#4ade80;margin:0 4px}
+
+/* 문항 화면 */
+#ds-question{
+  background:var(--ds-bg, #0d1117);
+  padding:40px 60px;
+}
+.ds-q-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:32px}
+.ds-live-badge{display:flex;align-items:center;gap:8px;background:rgba(233,69,96,0.15);border:1px solid rgba(233,69,96,0.3);border-radius:20px;padding:8px 20px;font-size:16px;font-weight:700;color:var(--ds-accent,#e94560)}
+.ds-live-dot{width:10px;height:10px;border-radius:50%;background:var(--ds-accent,#e94560);animation:blink 1s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+.ds-q-count{font-size:18px;color:rgba(255,255,255,0.4)}
+.ds-q-type{font-size:14px;font-weight:700;color:var(--ds-accent,#e94560);text-transform:uppercase;letter-spacing:2px;margin-bottom:12px}
+.ds-q-text{font-size:clamp(28px,4vw,56px);font-weight:800;color:#fff;line-height:1.3;margin-bottom:32px}
+.ds-progress-wrap{background:rgba(255,255,255,0.08);border-radius:8px;height:10px;overflow:hidden;margin-bottom:8px}
+.ds-progress-fill{height:100%;background:linear-gradient(90deg,#3b82f6,var(--ds-accent,#e94560));border-radius:8px;transition:width .5s ease}
+.ds-progress-label{display:flex;justify-content:space-between;font-size:15px;color:rgba(255,255,255,0.5);margin-bottom:28px}
+
+/* MC 결과 */
+.ds-mc-results{display:flex;flex-direction:column;gap:14px}
+.ds-mc-item{display:flex;align-items:center;gap:16px;animation:slideIn .4s ease forwards;opacity:0}
+@keyframes slideIn{from{opacity:0;transform:translateX(-20px)}to{opacity:1;transform:translateX(0)}}
+.ds-mc-letter{width:52px;height:52px;border-radius:14px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:rgba(255,255,255,0.5);flex-shrink:0}
+.ds-mc-letter.winner{background:rgba(16,185,129,0.2);border-color:rgba(16,185,129,0.4);color:#4ade80}
+.ds-mc-bar-wrap{flex:1}
+.ds-mc-bar-label{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.ds-mc-bar-text{font-size:clamp(16px,2vw,24px);font-weight:600;color:#fff}
+.ds-mc-bar-pct{font-size:clamp(18px,2.5vw,30px);font-weight:800;color:var(--ds-accent,#e94560)}
+.ds-mc-bar-pct.winner-pct{color:#4ade80}
+.ds-mc-bar-bg{height:18px;background:rgba(255,255,255,0.06);border-radius:9px;overflow:hidden}
+.ds-mc-bar-fg{height:100%;border-radius:9px;transition:width .8s cubic-bezier(.4,0,.2,1)}
+.ds-mc-bar-fg.normal{background:rgba(59,130,246,0.6)}
+.ds-mc-bar-fg.winner-bar{background:linear-gradient(90deg,#059669,#10b981)}
+.ds-mc-count{font-size:14px;color:rgba(255,255,255,0.4);margin-top:3px}
+
+/* 워드클라우드 */
+.ds-wc-wrap{flex:1;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:12px;padding:20px 0}
+.ds-wc-word{font-weight:800;padding:4px 8px;border-radius:8px}
+
+/* 주관식 응답 */
+.ds-open-grid{flex:1;display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px;overflow:hidden}
+.ds-open-bubble{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:16px 20px;font-size:clamp(16px,1.8vw,20px);color:rgba(255,255,255,0.85);line-height:1.5;animation:fadeUp .5s ease forwards;opacity:0}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+/* 청중 질문 화면 */
+#ds-upflow{background:var(--ds-bg, #0d1117);padding:40px 60px}
+.ds-upflow-list{display:flex;flex-direction:column;gap:14px;margin-top:24px}
+.ds-upflow-item{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:18px;padding:24px 32px;display:flex;align-items:flex-start;gap:20px}
+.ds-upflow-item.top{background:rgba(233,69,96,0.08);border-color:rgba(233,69,96,0.25)}
+.ds-upflow-votes{font-size:clamp(32px,5vw,56px);font-weight:900;color:rgba(255,255,255,0.3);min-width:70px;text-align:center;line-height:1}
+.ds-upflow-item.top .ds-upflow-votes{color:var(--ds-accent,#e94560)}
+.ds-upflow-text{font-size:clamp(18px,2.5vw,28px);font-weight:600;color:#fff;line-height:1.4;flex:1}
+
+/* 티커 */
+.ds-ticker{position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.8);border-top:1px solid rgba(255,255,255,0.08);padding:10px 20px;display:flex;align-items:center;gap:14px;font-size:15px;z-index:100}
+.ds-ticker-label{color:var(--ds-accent,#e94560);font-weight:700;white-space:nowrap}
+.ds-ticker-track{overflow:hidden;flex:1}
+.ds-ticker-content{display:flex;gap:60px;width:max-content}
+.ds-ticker-item{color:rgba(255,255,255,0.6);white-space:nowrap}
+.ticker-animate{animation:scroll 20s linear infinite}
+@keyframes scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+/* 로딩 */
+#ds-loading{background:#0d1117;align-items:center;justify-content:center;flex-direction:column}
+.loading-spinner{width:48px;height:48px;border:4px solid rgba(255,255,255,0.1);border-top-color:#e94560;border-radius:50%;animation:spin 1s linear infinite;margin-bottom:16px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* 에러 */
+#ds-error{background:#0d1117;align-items:center;justify-content:center;flex-direction:column;text-align:center}
+</style>
 </head>
 <body>
 
-<!-- STANDBY SCREEN -->
-<div class="dscreen standby active" id="ds-standby">
-  <div class="standby-logo">🎯</div>
-  <div class="standby-title">Planbag ARS</div>
-  <div class="standby-sub">2025 HR 컨퍼런스</div>
-  <div class="standby-code-wrap">
-    <div class="standby-code-label">참여 코드</div>
-    <div class="standby-code">ABC123</div>
-    <div class="standby-url">go.planbag-ars.com</div>
-  </div>
-  <div class="standby-count">현재 <span id="standby-count">47</span>명 참여 중</div>
+<!-- 로딩 -->
+<div class="dscreen active" id="ds-loading">
+  <div class="loading-spinner"></div>
+  <div style="color:rgba(255,255,255,0.5);font-size:16px">행사 정보를 불러오는 중...</div>
 </div>
 
-<!-- Q DISPLAY SCREEN -->
-<div class="dscreen q-display" id="ds-question">
-  <div class="q-display-header">
-    <div class="q-display-badge"><div class="live-dot"></div> LIVE 진행 중</div>
-    <div class="q-display-count">문항 <span id="ds-q-num">1</span> / <span id="ds-q-total">3</span></div>
-    <div class="q-display-time" id="ds-timer" style="display:none">30</div>
-  </div>
-
-  <div class="q-display-text" id="ds-q-text">오늘 세션에서 가장 기대되는 주제는 무엇인가요?</div>
-
-  <div id="ds-response-progress" style="margin-bottom:32px">
-    <div class="response-progress"><div class="response-progress-fill" id="ds-prog-fill" style="width:68%"></div></div>
-    <div class="response-label"><span id="ds-resp-count">32명 응답 중</span><span id="ds-resp-pct">68%</span></div>
-  </div>
-
-  <div id="ds-content">
-    <!-- dynamic -->
-  </div>
+<!-- 에러 -->
+<div class="dscreen" id="ds-error">
+  <div style="font-size:48px;margin-bottom:16px">⚠️</div>
+  <div style="font-size:24px;font-weight:700;margin-bottom:8px" id="ds-error-msg">행사를 찾을 수 없습니다</div>
+  <div style="font-size:16px;color:rgba(255,255,255,0.5)">URL에 유효한 참여 코드가 포함되어 있는지 확인해주세요</div>
 </div>
 
-<!-- UPFLOW SCREEN -->
-<div class="dscreen q-display" id="ds-upflow">
-  <div class="q-display-header">
-    <div class="q-display-badge"><div class="live-dot"></div> 청중 질문</div>
-    <div style="color:var(--muted);font-size:18px">추천 순으로 표시</div>
-  </div>
-  <div class="q-display-text" style="font-size:38px">💬 청중 질문</div>
-  <div class="upflow-display">
-    <div class="upflow-highlight top">
-      <div class="upflow-highlight-vote">12</div>
-      <div class="upflow-highlight-text">오늘 발표에서 가장 중요한 메시지가 무엇인지 한 문장으로 요약해주실 수 있나요?</div>
+<!-- 대기 화면 -->
+<div class="dscreen" id="ds-standby">
+  <div class="ds-bg-img" id="ds-bg-img"></div>
+  <div class="ds-overlay"></div>
+  <div class="standby-inner">
+    <img class="ds-logo" id="ds-logo" src="" alt="로고">
+    <div class="ds-event-name" id="ds-event-name">행사명</div>
+    <div class="ds-org-name" id="ds-org-name"></div>
+    <div class="ds-qr-section" id="ds-qr-section">
+      <div class="ds-qr-box">
+        <img id="ds-qr-img" src="" alt="QR">
+      </div>
+      <div class="ds-qr-info">
+        <div class="ds-qr-label">참여하기</div>
+        <div class="ds-qr-url" id="ds-qr-url"></div>
+        <div class="ds-qr-code" id="ds-qr-code">——</div>
+      </div>
     </div>
-    <div class="upflow-highlight">
-      <div class="upflow-highlight-vote">8</div>
-      <div class="upflow-highlight-text">AI 도입 시 가장 큰 조직 내 저항은 무엇이라고 생각하시나요?</div>
-    </div>
-    <div class="upflow-highlight">
-      <div class="upflow-highlight-vote">5</div>
-      <div class="upflow-highlight-text">실제 적용 사례를 좀 더 구체적으로 말씀해주실 수 있을까요?</div>
+    <div class="ds-participant-badge" id="ds-participant-badge">
+      <div class="ds-pulse"></div>
+      <span class="ds-count" id="ds-count">0</span>
+      <span>명 참여 중</span>
     </div>
   </div>
 </div>
 
-<!-- DEMO CONTROLS -->
-<div class="demo-controls">
-  <button class="ctrl-btn ctrl-btn-ghost" onclick="showDScreen('standby')">🏠 대기화면</button>
-  <button class="ctrl-btn ctrl-btn-ghost" onclick="showMC()">📊 객관식 결과</button>
-  <button class="ctrl-btn ctrl-btn-ghost" onclick="showWord()">🌐 워드클라우드</button>
-  <button class="ctrl-btn ctrl-btn-ghost" onclick="showOpen()">📝 주관식</button>
-  <button class="ctrl-btn ctrl-btn-ghost" onclick="showDScreen('upflow')">💬 청중질문</button>
+<!-- 문항 화면 -->
+<div class="dscreen" id="ds-question">
+  <div class="ds-q-header">
+    <div class="ds-live-badge"><div class="ds-live-dot"></div> LIVE 진행 중</div>
+    <div class="ds-q-count" id="ds-q-count"></div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div class="ds-pulse" style="background:#4ade80"></div>
+      <span style="font-size:16px;color:rgba(255,255,255,0.5)"><span id="ds-q-participant">0</span>명 참여</span>
+    </div>
+  </div>
+  <div class="ds-q-type" id="ds-q-type"></div>
+  <div class="ds-q-text" id="ds-q-text"></div>
+  <div class="ds-progress-wrap"><div class="ds-progress-fill" id="ds-prog-fill" style="width:0%"></div></div>
+  <div class="ds-progress-label">
+    <span id="ds-resp-count">응답 0명</span>
+    <span id="ds-resp-pct">0%</span>
+  </div>
+  <div id="ds-content" style="flex:1;overflow:hidden"></div>
 </div>
 
-<!-- TICKER -->
-<div class="ticker">
-  <div class="ticker-label">LIVE</div>
-  <div class="ticker-track">
-    <div class="ticker-content">
-      <span class="ticker-item">✅ 홍길동님 출석 확인</span>
-      <span class="ticker-item">💬 새 질문 등록: "AI 도입 시 조직 저항은?"</span>
-      <span class="ticker-item">✅ 김철수님 출석 확인</span>
-      <span class="ticker-item">▲ 질문 추천 +3</span>
-      <span class="ticker-item">📊 47명 현재 참여 중</span>
-      <span class="ticker-item">✅ 이영희님 출석 확인</span>
-      <span class="ticker-item">💬 새 질문 등록: "실제 적용 사례는?"</span>
-      <span class="ticker-item">✅ 홍길동님 출석 확인</span>
-      <span class="ticker-item">💬 새 질문 등록: "AI 도입 시 조직 저항은?"</span>
-      <span class="ticker-item">✅ 김철수님 출석 확인</span>
-      <span class="ticker-item">▲ 질문 추천 +3</span>
-      <span class="ticker-item">📊 47명 현재 참여 중</span>
-    </div>
+<!-- 청중 질문 화면 -->
+<div class="dscreen" id="ds-upflow">
+  <div class="ds-q-header">
+    <div class="ds-live-badge"><div class="ds-live-dot"></div> 청중 질문</div>
+    <div style="color:rgba(255,255,255,0.4);font-size:16px">추천 순</div>
+  </div>
+  <div style="font-size:clamp(28px,4vw,48px);font-weight:800;color:#fff;margin-bottom:8px">💬 청중 질문</div>
+  <div class="ds-upflow-list" id="ds-upflow-list"></div>
+</div>
+
+<!-- 티커 -->
+<div class="ds-ticker" id="ds-ticker">
+  <div class="ds-ticker-label">LIVE</div>
+  <div class="ds-ticker-track">
+    <div class="ds-ticker-content ticker-animate" id="ds-ticker-content"></div>
   </div>
 </div>
 
 <script>
-function showDScreen(name) {
-  document.querySelectorAll('.dscreen').forEach(s=>s.classList.remove('active'));
-  document.getElementById('ds-'+name).classList.add('active');
+// ============================================================
+// STATE
+// ============================================================
+const ds = {
+  session: null,
+  settings: {},
+  participantCount: 0,
+  currentQuestion: null,
+  questions: [],
+  upflows: [],
+  tickerItems: [],
+  responseChannel: null
+};
+
+// ============================================================
+// INIT
+// ============================================================
+window.addEventListener('DOMContentLoaded', async () => {
+  const params = new URLSearchParams(location.search);
+  const code = params.get('code');
+  if (!code) { showError('URL에 참여 코드가 없습니다 (?code=XXXXXX)'); return; }
+  await loadSession(code);
+});
+
+async function loadSession(code) {
+  const { data: session, error } = await sb.from('ars_sessions')
+    .select('*').eq('access_code', code).single();
+  if (error || !session) { showError('행사를 찾을 수 없습니다: ' + code); return; }
+
+  ds.session = session;
+  ds.settings = session.display_settings || {};
+
+  // 스타일 적용
+  applySettings();
+
+  // 참여자 수 로드
+  await refreshParticipantCount();
+
+  // 문항 로드
+  await loadQuestions();
+
+  // 실시간 구독
+  subscribeRealtime(session.id);
+
+  // 활성 문항 확인
+  const activeQ = ds.questions.find(q => q.is_active);
+  if (activeQ) showQuestion(activeQ);
+  else showStandby();
 }
 
-function showMC() {
-  showDScreen('question');
-  document.getElementById('ds-q-text').textContent = '오늘 세션에서 가장 기대되는 주제는 무엇인가요?';
-  const data = [
-    {text:'AI와 HR의 미래', votes:32, pct:42},
-    {text:'조직 문화 혁신', votes:24, pct:32},
-    {text:'데이터 기반 의사결정', votes:14, pct:19},
-    {text:'구성원 경험 설계', votes:5, pct:7},
-  ];
-  const maxVotes = Math.max(...data.map(d=>d.votes));
-  const letters = ['A','B','C','D'];
-  document.getElementById('ds-content').innerHTML = `<div class="mc-results">` +
-    data.map((d,i) => {
-      const isWinner = d.votes === maxVotes;
-      return `<div class="mc-result-item" style="animation-delay:${i*0.1}s">
-        <div class="mc-letter-big ${isWinner?'winner':''}">${letters[i]}</div>
-        <div class="mc-bar-wrap">
-          <div class="mc-bar-label">
-            <span class="mc-bar-text">${d.text}</span>
-            <span class="mc-bar-pct ${isWinner?'winner-pct':''}">${d.pct}%</span>
+function applySettings() {
+  const s = ds.settings;
+  const bg = s.bg_color || '#0d1117';
+  const accent = s.accent_color || '#e94560';
+  document.documentElement.style.setProperty('--ds-bg', bg);
+  document.documentElement.style.setProperty('--ds-accent', accent);
+
+  // 배경 이미지
+  if (s.bg_image_url) {
+    document.getElementById('ds-bg-img').style.backgroundImage = `url(${s.bg_image_url})`;
+    document.getElementById('ds-bg-img').style.display = 'block';
+  }
+
+  // 로고
+  const logo = document.getElementById('ds-logo');
+  if (s.logo_url) { logo.src = s.logo_url; logo.style.display = 'block'; }
+
+  // 티커
+  if (s.show_ticker === false) {
+    document.getElementById('ds-ticker').style.display = 'none';
+  }
+}
+
+function showStandby() {
+  showScreen('standby');
+  const ev = ds.session;
+  const s = ds.settings;
+
+  if (s.show_event_name !== false) document.getElementById('ds-event-name').textContent = ev.event_name || '';
+  else document.getElementById('ds-event-name').style.display = 'none';
+
+  if (s.show_org_name !== false && ev.org_name) document.getElementById('ds-org-name').textContent = ev.org_name;
+  else document.getElementById('ds-org-name').style.display = 'none';
+
+  const code = ev.access_code;
+  const url = `starbucks-judge.github.io/planbag-ars/audience.html`;
+
+  if (s.show_qr !== false) {
+    const fullUrl = `https://${url}?code=${code}`;
+    document.getElementById('ds-qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(fullUrl)}`;
+    document.getElementById('ds-qr-url').textContent = url;
+    document.getElementById('ds-qr-code').textContent = code;
+  } else {
+    document.getElementById('ds-qr-section').style.display = 'none';
+  }
+
+  if (s.show_participant_count !== false) {
+    updateParticipantDisplay();
+  } else {
+    document.getElementById('ds-participant-badge').style.display = 'none';
+  }
+
+  // 티커 설정
+  setupTicker();
+}
+
+function updateParticipantDisplay() {
+  document.getElementById('ds-count').textContent = ds.participantCount;
+  document.getElementById('ds-q-participant').textContent = ds.participantCount;
+}
+
+async function refreshParticipantCount() {
+  const { count } = await sb.from('ars_attendance')
+    .select('*', { count: 'exact', head: true })
+    .eq('session_id', ds.session.id);
+  ds.participantCount = count || 0;
+  updateParticipantDisplay();
+}
+
+// ============================================================
+// REALTIME
+// ============================================================
+function subscribeRealtime(sessionId) {
+  sb.channel('display-rt-' + sessionId)
+    // 세션 설정 변경 (display_settings 업데이트 시 즉시 반영)
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'ars_sessions', filter: `id=eq.${sessionId}` }, (payload) => {
+      ds.session = payload.new;
+      ds.settings = payload.new.display_settings || {};
+      applySettings();
+      // 대기화면이면 다시 렌더
+      if (document.getElementById('ds-standby').classList.contains('active')) showStandby();
+    })
+    // 문항 상태 변경
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'ars_questions', filter: `session_id=eq.${sessionId}` }, async (payload) => {
+      const q = payload.new;
+      const idx = ds.questions.findIndex(x => x.id === q.id);
+      if (idx >= 0) ds.questions[idx] = q;
+      else ds.questions.push(q);
+
+      if (q.is_active) {
+        showQuestion(q);
+      } else if (q.is_closed && ds.currentQuestion?.id === q.id) {
+        // 마감 → 결과 표시
+        if (q.show_result) await showResults(q);
+        else showStandby();
+      } else if (!q.is_active && !q.is_closed) {
+        // 모든 문항 비활성 → 대기화면
+        const anyActive = ds.questions.some(x => x.is_active);
+        if (!anyActive) showStandby();
+      }
+    })
+    // 응답 INSERT → 응답률 업데이트
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'ars_responses', filter: `session_id=eq.${sessionId}` }, async () => {
+      if (!ds.currentQuestion) return;
+      await refreshResponseCount();
+    })
+    // 출석 INSERT → 참여자 수 업데이트
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'ars_attendance', filter: `session_id=eq.${sessionId}` }, async () => {
+      await refreshParticipantCount();
+      addTickerItem('✅ 새 참여자가 입장했습니다');
+    })
+    // UpFlow INSERT
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'ars_upflows', filter: `session_id=eq.${sessionId}` }, async (payload) => {
+      addTickerItem('💬 새 질문: ' + payload.new.text.slice(0, 30) + (payload.new.text.length > 30 ? '...' : ''));
+      await loadUpflows();
+    })
+    .subscribe();
+}
+
+// ============================================================
+// 문항 표시
+// ============================================================
+async function loadQuestions() {
+  const { data } = await sb.from('ars_questions')
+    .select('*').eq('session_id', ds.session.id).order('sort_order');
+  ds.questions = data || [];
+}
+
+function showQuestion(q) {
+  ds.currentQuestion = q;
+  showScreen('question');
+  const typeLabels = { mc: '객관식', open: '주관식', word: '워드클라우드' };
+  const qIdx = ds.questions.findIndex(x => x.id === q.id);
+  document.getElementById('ds-q-type').textContent = typeLabels[q.type] || '';
+  document.getElementById('ds-q-text').textContent = q.text || '';
+  document.getElementById('ds-q-count').textContent = qIdx >= 0 ? `문항 ${qIdx+1} / ${ds.questions.length}` : '';
+  document.getElementById('ds-prog-fill').style.width = '0%';
+  document.getElementById('ds-resp-count').textContent = '응답 0명';
+  document.getElementById('ds-resp-pct').textContent = '0%';
+  document.getElementById('ds-content').innerHTML = '';
+
+  if (q.show_result) {
+    // 실시간 결과 구독
+    refreshResponseCount();
+  }
+}
+
+async function refreshResponseCount() {
+  if (!ds.currentQuestion) return;
+  const { data: resps } = await sb.from('ars_responses')
+    .select('*').eq('question_id', ds.currentQuestion.id);
+  const count = (resps || []).length;
+  const total = Math.max(ds.participantCount, 1);
+  const pct = Math.round(count / total * 100);
+  document.getElementById('ds-prog-fill').style.width = pct + '%';
+  document.getElementById('ds-resp-count').textContent = `응답 ${count}명`;
+  document.getElementById('ds-resp-pct').textContent = pct + '%';
+
+  // MC 실시간 바 업데이트
+  if (ds.currentQuestion.type === 'mc') renderMCBars(ds.currentQuestion, resps || []);
+  else if (ds.currentQuestion.type === 'word') renderWordCloud(resps || []);
+  else if (ds.currentQuestion.type === 'open') renderOpenBubbles(resps || []);
+}
+
+async function showResults(q) {
+  const { data: resps } = await sb.from('ars_responses').select('*').eq('question_id', q.id);
+  showQuestion(q);
+  if (q.type === 'mc') renderMCBars(q, resps || []);
+  else if (q.type === 'word') renderWordCloud(resps || []);
+  else renderOpenBubbles(resps || []);
+}
+
+function renderMCBars(q, resps) {
+  const opts = q.options || [];
+  const counts = new Array(opts.length).fill(0);
+  resps.forEach(r => { if (r.answer_index !== null && r.answer_index < counts.length) counts[r.answer_index]++; });
+  const total = counts.reduce((a,b)=>a+b,0) || 1;
+  const maxC = Math.max(...counts);
+  const letters = ['A','B','C','D','E','F'];
+  document.getElementById('ds-content').innerHTML = `<div class="ds-mc-results">` +
+    opts.map((opt,i) => {
+      const pct = Math.round(counts[i]/total*100);
+      const isWinner = counts[i] === maxC && maxC > 0;
+      return `<div class="ds-mc-item" style="animation-delay:${i*0.08}s">
+        <div class="ds-mc-letter ${isWinner?'winner':''}">${letters[i]}</div>
+        <div class="ds-mc-bar-wrap">
+          <div class="ds-mc-bar-label">
+            <span class="ds-mc-bar-text">${opt}</span>
+            <span class="ds-mc-bar-pct ${isWinner?'winner-pct':''}">${pct}%</span>
           </div>
-          <div class="mc-bar-bg"><div class="mc-bar-fg ${isWinner?'winner-bar':'normal'}" style="width:0%" data-w="${d.pct}"></div></div>
-          <div class="mc-bar-count">${d.votes}명</div>
+          <div class="ds-mc-bar-bg"><div class="ds-mc-bar-fg ${isWinner?'winner-bar':'normal'}" style="width:0%" data-w="${pct}"></div></div>
+          <div class="ds-mc-count">${counts[i]}명</div>
         </div>
       </div>`;
     }).join('') + `</div>`;
-  setTimeout(() => document.querySelectorAll('.mc-bar-fg').forEach(el => el.style.width = el.dataset.w+'%'), 200);
+  setTimeout(() => document.querySelectorAll('.ds-mc-bar-fg').forEach(el => el.style.width = el.dataset.w+'%'), 100);
 }
 
-function showWord() {
-  showDScreen('question');
-  document.getElementById('ds-q-text').textContent = '오늘 행사를 한 단어로 표현한다면?';
-  const words = [
-    {w:'혁신',s:72},{w:'소통',s:60},{w:'성장',s:54},{w:'변화',s:48},
-    {w:'협력',s:44},{w:'창의',s:40},{w:'도전',s:36},{w:'미래',s:34},
-    {w:'가치',s:30},{w:'팀워크',s:28},{w:'리더십',s:26},{w:'동기',s:24}
-  ];
-  document.getElementById('ds-content').innerHTML = `<div class="wc-display">` +
-    words.map(({w,s}) => `<span class="wc-word-big" style="font-size:${s}px">${w}</span>`).join('') + `</div>`;
+function renderWordCloud(resps) {
+  const wordMap = {};
+  resps.forEach(r => { if(r.answer){ const w=r.answer.trim(); wordMap[w]=(wordMap[w]||0)+1; } });
+  const sorted = Object.entries(wordMap).sort((a,b)=>b[1]-a[1]).slice(0,20);
+  const maxC = sorted[0]?.[1] || 1;
+  const colors = ['#e94560','#3b82f6','#10b981','#f59e0b','#8b5cf6','#ec4899'];
+  document.getElementById('ds-content').innerHTML = `<div class="ds-wc-wrap">` +
+    sorted.map(([w,c],i) => `<span class="ds-wc-word" style="font-size:${20+Math.round(c/maxC*48)}px;color:${colors[i%colors.length]}">${w}</span>`).join('') +
+    `</div>`;
 }
 
-function showOpen() {
-  showDScreen('question');
-  document.getElementById('ds-q-text').textContent = '이번 행사에서 얻고 싶은 인사이트는?';
-  const answers = [
-    'AI를 활용한 채용 프로세스 개선 방법','조직문화 변화를 이끄는 리더의 역할',
-    '데이터로 의사결정을 바꾸는 HR의 미래','직원 경험을 중심으로 한 제도 설계',
-    '세대 간 소통을 위한 실질적인 전략','HR이 비즈니스 파트너가 되는 방법'
+function renderOpenBubbles(resps) {
+  document.getElementById('ds-content').innerHTML = `<div class="ds-open-grid">` +
+    resps.slice(0,8).map((r,i) => `<div class="ds-open-bubble" style="animation-delay:${i*0.12}s">${r.answer||''}</div>`).join('') +
+    `</div>`;
+}
+
+// ============================================================
+// UPFLOW
+// ============================================================
+async function loadUpflows() {
+  const { data } = await sb.from('ars_upflows')
+    .select('*').eq('session_id', ds.session.id)
+    .eq('is_answered', false).order('vote_count', { ascending: false }).limit(5);
+  ds.upflows = data || [];
+  if (document.getElementById('ds-upflow').classList.contains('active')) renderUpflowScreen();
+}
+
+function renderUpflowScreen() {
+  document.getElementById('ds-upflow-list').innerHTML = ds.upflows.map((u,i) =>
+    `<div class="ds-upflow-item ${i===0?'top':''}">
+      <div class="ds-upflow-votes">${u.vote_count}</div>
+      <div class="ds-upflow-text">${u.text}</div>
+    </div>`
+  ).join('');
+}
+
+// ============================================================
+// 티커
+// ============================================================
+function setupTicker() {
+  const s = ds.settings;
+  const base = s.ticker_message ? [s.ticker_message] : [];
+  ds.tickerItems = [
+    ...base,
+    `${ds.session.event_name} — ${ds.session.access_code}`,
+    'QR코드를 스캔하여 참여해주세요',
+    `현재 ${ds.participantCount}명 참여 중`
   ];
-  document.getElementById('ds-content').innerHTML = `<div class="open-display">` +
-    answers.map((a,i) => `<div class="open-bubble" style="animation-delay:${i*0.15}s">${a}</div>`).join('') + `</div>`;
+  renderTicker();
+}
+
+function addTickerItem(msg) {
+  ds.tickerItems.push(msg);
+  if (ds.tickerItems.length > 10) ds.tickerItems.shift();
+  renderTicker();
+}
+
+function renderTicker() {
+  const items = [...ds.tickerItems, ...ds.tickerItems];
+  document.getElementById('ds-ticker-content').innerHTML =
+    items.map(t => `<span class="ds-ticker-item">• ${t}</span>`).join('');
+}
+
+// ============================================================
+// 화면 전환
+// ============================================================
+function showScreen(name) {
+  document.querySelectorAll('.dscreen').forEach(s => s.classList.remove('active'));
+  document.getElementById('ds-' + name).classList.add('active');
+}
+
+function showError(msg) {
+  document.getElementById('ds-error-msg').textContent = msg;
+  showScreen('error');
 }
 </script>
 </body>

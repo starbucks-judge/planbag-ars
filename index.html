@@ -322,6 +322,69 @@ textarea{resize:vertical;min-height:80px}
         <div style="margin-top:14px;display:flex;justify-content:flex-end">
           <button class="btn btn-primary" id="start-session-btn2" onclick="openStartModal()">▶ 세션 시작</button>
         </div>
+
+        <!-- 디스플레이 설정 -->
+        <div class="card" style="margin-top:18px">
+          <div class="card-title"><span class="dot"></span>디스플레이 설정
+            <span style="margin-left:auto">
+              <button class="btn btn-blue btn-sm" onclick="openDisplayPreview()">🖥️ 미리보기</button>
+              <button class="btn btn-primary btn-sm" onclick="saveDisplaySettings()" style="margin-left:6px">💾 저장</button>
+            </span>
+          </div>
+          <div class="form-grid-2">
+            <div class="form-row">
+              <label>배경 색상</label>
+              <div style="display:flex;gap:8px;align-items:center">
+                <input type="color" id="ds-bg-color" value="#0d1117" style="width:44px;height:36px;padding:2px;border-radius:6px;border:1px solid var(--border);cursor:pointer">
+                <input type="text" id="ds-bg-color-text" value="#0d1117" style="flex:1" oninput="document.getElementById('ds-bg-color').value=this.value">
+              </div>
+            </div>
+            <div class="form-row">
+              <label>강조 색상</label>
+              <div style="display:flex;gap:8px;align-items:center">
+                <input type="color" id="ds-accent-color" value="#e94560" style="width:44px;height:36px;padding:2px;border-radius:6px;border:1px solid var(--border);cursor:pointer">
+                <input type="text" id="ds-accent-color-text" value="#e94560" style="flex:1" oninput="document.getElementById('ds-accent-color').value=this.value">
+              </div>
+            </div>
+            <div class="form-row">
+              <label>로고 이미지 URL (선택)</label>
+              <input type="text" id="ds-logo-url" placeholder="https://...">
+            </div>
+            <div class="form-row">
+              <label>배경 이미지 URL (선택)</label>
+              <input type="text" id="ds-bg-image-url" placeholder="https://...">
+            </div>
+            <div class="form-row">
+              <label>하단 티커 메시지</label>
+              <input type="text" id="ds-ticker-msg" placeholder="오늘 행사에 오신 것을 환영합니다!">
+            </div>
+          </div>
+          <div style="margin-top:12px">
+            <label style="margin-bottom:10px;display:block">표시 항목</label>
+            <div style="display:flex;flex-wrap:wrap;gap:12px">
+              <label style="display:flex;align-items:center;gap:6px;font-size:13px;text-transform:none;letter-spacing:0;color:var(--text);font-weight:500;cursor:pointer">
+                <input type="checkbox" id="ds-show-name" checked> 행사명
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;font-size:13px;text-transform:none;letter-spacing:0;color:var(--text);font-weight:500;cursor:pointer">
+                <input type="checkbox" id="ds-show-org" checked> 주최 기관
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;font-size:13px;text-transform:none;letter-spacing:0;color:var(--text);font-weight:500;cursor:pointer">
+                <input type="checkbox" id="ds-show-qr" checked> QR코드
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;font-size:13px;text-transform:none;letter-spacing:0;color:var(--text);font-weight:500;cursor:pointer">
+                <input type="checkbox" id="ds-show-count" checked> 실시간 참여 인원
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;font-size:13px;text-transform:none;letter-spacing:0;color:var(--text);font-weight:500;cursor:pointer">
+                <input type="checkbox" id="ds-show-ticker" checked> 하단 티커
+              </label>
+            </div>
+          </div>
+          <!-- 컬러 피커 sync -->
+          <script>
+            document.getElementById('ds-bg-color').addEventListener('input', function(){ document.getElementById('ds-bg-color-text').value = this.value; });
+            document.getElementById('ds-accent-color').addEventListener('input', function(){ document.getElementById('ds-accent-color-text').value = this.value; });
+          </script>
+        </div>
       </div>
 
       <!-- 문항 관리 -->
@@ -592,7 +655,6 @@ async function enterEvent(id) {
   document.getElementById('event-nav-items').style.display = 'block';
   document.getElementById('sidebar-session').style.display = 'block';
   document.getElementById('topbar-event').textContent = '— ' + ev.event_name;
-  document.getElementById('start-session-btn').style.display = 'inline-flex';
 
   // 행사 정보 폼 채우기
   document.getElementById('ev-name').value = ev.event_name || '';
@@ -606,18 +668,35 @@ async function enterEvent(id) {
   updateQR();
   updateTopbar();
 
+  // 디스플레이 설정 로드
+  if (ev.display_settings) loadDisplaySettings(ev.display_settings);
+
   // 세션 활성 상태면 LIVE 표시
   if (ev.is_active) {
     setLiveUI(true);
     subscribeRealtime(ev.id);
+  } else {
+    setLiveUI(false);
   }
 
   // 문항 로드
   await loadQuestions();
+
+  // 새로고침 시 진행 중인 문항 복원
+  const activeQ = state.questions.find(q => q.isActive);
+  if (activeQ) {
+    state.activeQuestion = activeQ;
+    state.currentQIndex = state.questions.indexOf(activeQ);
+    // 마감된 문항 복원
+    state.questions.forEach(q => { if (q.isClosed) state.responses[q.id] = true; });
+    // 버튼 상태 복원
+    const launchBtn = document.getElementById('launch-btn');
+    if (launchBtn) launchBtn.textContent = '✅ 출제 중';
+    updateToggleResultBtn(activeQ.showResult);
+  }
+
   // 탭 초기화
   switchTabByName('setup');
-
-  // 첫 번째 nav 활성화
   document.querySelectorAll('#event-nav-items .nav-item').forEach((b,i) => b.classList.toggle('active', i===0));
 }
 
@@ -661,6 +740,44 @@ async function saveEventInfo() {
   alert('저장되었습니다');
   updateTopbar();
   updateQR();
+}
+
+async function saveDisplaySettings() {
+  if (!state.sessionId) return;
+  const settings = {
+    bg_color: document.getElementById('ds-bg-color').value,
+    accent_color: document.getElementById('ds-accent-color').value,
+    logo_url: document.getElementById('ds-logo-url').value.trim(),
+    bg_image_url: document.getElementById('ds-bg-image-url').value.trim(),
+    ticker_message: document.getElementById('ds-ticker-msg').value.trim(),
+    show_event_name: document.getElementById('ds-show-name').checked,
+    show_org_name: document.getElementById('ds-show-org').checked,
+    show_qr: document.getElementById('ds-show-qr').checked,
+    show_participant_count: document.getElementById('ds-show-count').checked,
+    show_ticker: document.getElementById('ds-show-ticker').checked
+  };
+  const { error } = await sb.from('ars_sessions').update({ display_settings: settings }).eq('id', state.sessionId);
+  if (error) { alert('저장 실패: ' + error.message); return; }
+  alert('디스플레이 설정이 저장되었습니다');
+}
+
+function loadDisplaySettings(settings) {
+  if (!settings) return;
+  if (settings.bg_color) { document.getElementById('ds-bg-color').value = settings.bg_color; document.getElementById('ds-bg-color-text').value = settings.bg_color; }
+  if (settings.accent_color) { document.getElementById('ds-accent-color').value = settings.accent_color; document.getElementById('ds-accent-color-text').value = settings.accent_color; }
+  if (settings.logo_url) document.getElementById('ds-logo-url').value = settings.logo_url;
+  if (settings.bg_image_url) document.getElementById('ds-bg-image-url').value = settings.bg_image_url;
+  if (settings.ticker_message) document.getElementById('ds-ticker-msg').value = settings.ticker_message;
+  document.getElementById('ds-show-name').checked = settings.show_event_name !== false;
+  document.getElementById('ds-show-org').checked = settings.show_org_name !== false;
+  document.getElementById('ds-show-qr').checked = settings.show_qr !== false;
+  document.getElementById('ds-show-count').checked = settings.show_participant_count !== false;
+  document.getElementById('ds-show-ticker').checked = settings.show_ticker !== false;
+}
+
+function openDisplayPreview() {
+  const code = document.getElementById('ev-code').value;
+  window.open(`https://starbucks-judge.github.io/planbag-ars/display.html?code=${code}`, '_blank');
 }
 
 function updateTopbar() {
@@ -1129,6 +1246,102 @@ function filterAttendees() { renderAttendance(); }
 function exportAttendance() { alert('엑셀 다운로드 기능 준비 중'); }
 function exportResults() { alert('결과 다운로드 기능 준비 중'); }
 
+// 라이브 탭 진입 시 진행 중인 문항 복원
+function restoreLiveQ() {
+  if (state.activeQuestion) {
+    const idx = state.questions.findIndex(q => q.id === state.activeQuestion.id);
+    if (idx >= 0) {
+      state.currentQIndex = idx;
+      renderCurrentQ(state.activeQuestion);
+      const launchBtn = document.getElementById('launch-btn');
+      if (launchBtn) launchBtn.textContent = '✅ 출제 중';
+      updateToggleResultBtn(state.activeQuestion.showResult);
+      const isClosed = state.responses[state.activeQuestion.id];
+      const closeBtn = document.getElementById('close-btn');
+      if (closeBtn) {
+        closeBtn.textContent = isClosed ? '↩ 마감 취소' : '⏹ 문항 마감';
+        closeBtn.className = isClosed ? 'btn btn-secondary btn-sm' : 'btn btn-danger btn-sm';
+      }
+    }
+  }
+}
+
+// 결과 분석 실제 DB 연동
+async function loadResults() {
+  if (!state.sessionId) return;
+  const container = document.getElementById('results-detail');
+  container.innerHTML = '<div class="empty"><div class="empty-icon">⏳</div><div class="empty-title">불러오는 중...</div></div>';
+
+  const { data: questions } = await sb.from('ars_questions')
+    .select('*').eq('session_id', state.sessionId).order('sort_order');
+  const { data: responses } = await sb.from('ars_responses')
+    .select('*').eq('session_id', state.sessionId);
+  const { count: attCount } = await sb.from('ars_attendance')
+    .select('*', { count: 'exact', head: true }).eq('session_id', state.sessionId);
+
+  if (!questions?.length) {
+    container.innerHTML = '<div class="empty"><div class="empty-icon">📊</div><div class="empty-title">결과 데이터 없음</div></div>';
+    return;
+  }
+
+  const totalResps = responses?.length || 0;
+  const participants = attCount || 0;
+  const avgRate = participants > 0 ? Math.round(totalResps / questions.length / participants * 100) : 0;
+
+  document.getElementById('res-questions').textContent = questions.length;
+  document.getElementById('res-responses').textContent = totalResps;
+  document.getElementById('res-avg-rate').textContent = avgRate + '%';
+  document.getElementById('res-participants').textContent = participants;
+
+  const letters = ['A','B','C','D','E','F'];
+  container.innerHTML = questions.map((q, qi) => {
+    const qResps = (responses || []).filter(r => r.question_id === q.id);
+    const typeLabel = {mc:'객관식', open:'주관식', word:'워드클라우드'}[q.type] || q.type;
+    let resultHtml = '';
+
+    if (q.type === 'mc' && q.options) {
+      const counts = new Array(q.options.length).fill(0);
+      qResps.forEach(r => { if (r.answer_index !== null && r.answer_index < counts.length) counts[r.answer_index]++; });
+      const total = counts.reduce((a,b)=>a+b,0) || 1;
+      const maxC = Math.max(...counts);
+      resultHtml = `<div style="margin-top:12px">` + q.options.map((opt,i) => {
+        const pct = Math.round(counts[i]/total*100);
+        const isWinner = counts[i] === maxC && maxC > 0;
+        return `<div style="margin-bottom:8px">
+          <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:600;margin-bottom:3px">
+            <span>${letters[i]}. ${opt}</span>
+            <span style="color:${isWinner?'var(--success)':'var(--muted)'}">${counts[i]}명 (${pct}%)</span>
+          </div>
+          <div style="background:var(--bg);border-radius:4px;height:18px;overflow:hidden">
+            <div style="height:100%;width:${pct}%;background:${isWinner?'var(--success)':'var(--accent2)'};border-radius:4px;transition:width .5s;display:flex;align-items:center;padding-left:6px">
+              <span style="font-size:10px;color:#fff;font-weight:600">${pct > 10 ? pct+'%' : ''}</span>
+            </div>
+          </div>
+        </div>`;
+      }).join('') + `</div>`;
+    } else if (q.type === 'word') {
+      const wordMap = {};
+      qResps.forEach(r => { if(r.answer){ const w=r.answer.trim(); wordMap[w]=(wordMap[w]||0)+1; } });
+      const sorted = Object.entries(wordMap).sort((a,b)=>b[1]-a[1]).slice(0,15);
+      resultHtml = `<div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:6px">` +
+        sorted.map(([w,c]) => `<span style="background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:4px 12px;font-size:${12+Math.min(c*2,12)}px;font-weight:600">${w} <span style="color:var(--accent);font-size:11px">${c}</span></span>`).join('') + `</div>`;
+    } else {
+      resultHtml = `<div style="margin-top:10px;display:flex;flex-direction:column;gap:6px">` +
+        qResps.slice(0,10).map(r => `<div style="background:var(--bg);border-radius:8px;padding:8px 12px;font-size:13px;color:var(--text)">${r.answer||''}</div>`).join('') + `</div>`;
+    }
+
+    return `<div class="card" style="margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+        <span style="font-size:12px;font-weight:700;color:var(--muted)">Q${qi+1}</span>
+        <span class="badge badge-blue">${typeLabel}</span>
+        <span style="margin-left:auto;font-size:12px;color:var(--muted)">${qResps.length}명 응답</span>
+      </div>
+      <div style="font-size:15px;font-weight:700;margin-bottom:4px">${q.text}</div>
+      ${resultHtml}
+    </div>`;
+  }).join('');
+}
+
 // ============================================================
 // TAB
 // ============================================================
@@ -1139,9 +1352,10 @@ function switchTab(name, el) {
   if (el) el.classList.add('active');
   const titles = {setup:'행사 세팅',questions:'문항 관리',live:'라이브 진행',upflow:'청중 질문',attendance:'출석 현황',results:'결과 분석'};
   document.getElementById('topbar-title').textContent = titles[name] || name;
-  if (name==='live') refreshLiveQList();
+  if (name==='live') { refreshLiveQList(); restoreLiveQ(); }
   if (name==='upflow') loadUpflows();
   if (name==='attendance') loadAttendance();
+  if (name==='results') loadResults();
 }
 
 function switchTabByName(name) {
