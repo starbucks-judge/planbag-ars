@@ -490,14 +490,12 @@ function enterHome() {
   document.getElementById('home-participant-name').textContent = app.name + '님 환영합니다 👋';
   document.getElementById('att-check-name').textContent = app.name + '님, 안녕하세요!';
   showScreen('home');
-  // 접속 기록 → 관리자 실시간 참여자 수 반영
-  if (app.sessionId && !app.accessLogged) {
-    app.accessLogged = true;
-    sb.from('ars_attendance').insert({
-      session_id: app.sessionId,
-      participant_name: app.name,
-      checked_at: null
-    }).then(() => {});
+
+  // 출석체크 완료 상태 복원 (localStorage)
+  const checkedKey = 'att_checked_' + app.sessionId;
+  if (localStorage.getItem(checkedKey)) {
+    app.attendanceChecked = true;
+    showAttCheckedUI();
   }
 }
 
@@ -783,31 +781,50 @@ async function voteQuestion(id) {
 // ============================================================
 function showAttendance() { showScreen('attendance'); }
 
-async function checkAttendance() {
-  if(app.attendanceChecked) return;
-  app.attendanceChecked = true;
-  if (app.sessionId) {
-    // 접속 시 이미 INSERT된 레코드에 checked_at 업데이트
-    const { data: existing } = await sb.from('ars_attendance')
-      .select('id').eq('session_id', app.sessionId)
-      .eq('participant_name', app.name).is('checked_at', null).single();
-    if (existing) {
-      await sb.from('ars_attendance').update({ checked_at: new Date().toISOString() }).eq('id', existing.id);
-    } else {
-      await sb.from('ars_attendance').insert({
-        session_id: app.sessionId, participant_name: app.name,
-        checked_at: new Date().toISOString()
-      });
-    }
-  }
-  document.getElementById('att-check-body').innerHTML = `
+function showAttCheckedUI() {
+  const el = document.getElementById('att-check-body');
+  if (!el) return;
+  el.innerHTML = `
     <div class="att-icon">✅</div>
     <div class="att-title">출석 완료!</div>
     <div class="att-sub">${app.name}님의 출석이 확인되었습니다</div>
     <div style="margin-top:24px;padding:14px 20px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;font-size:14px;color:#065f46;font-weight:500">
-      📍 출석 시간: ${new Date().toLocaleTimeString('ko-KR', {hour:'2-digit',minute:'2-digit'})}
+      📍 출석이 기록되었습니다
     </div>
   `;
+}
+
+async function checkAttendance() {
+  if (app.attendanceChecked) return;
+  app.attendanceChecked = true;
+
+  if (app.sessionId) {
+    // 기존 레코드 확인 (이름 + 세션 기준)
+    const { data: existing } = await sb.from('ars_attendance')
+      .select('id, checked_at')
+      .eq('session_id', app.sessionId)
+      .eq('participant_name', app.name)
+      .maybeSingle();
+
+    const now = new Date().toISOString();
+    if (existing) {
+      // 이미 있으면 checked_at만 업데이트
+      if (!existing.checked_at) {
+        await sb.from('ars_attendance').update({ checked_at: now }).eq('id', existing.id);
+      }
+    } else {
+      // 없으면 새로 INSERT
+      await sb.from('ars_attendance').insert({
+        session_id: app.sessionId,
+        participant_name: app.name,
+        checked_at: now
+      });
+    }
+  }
+
+  // localStorage에 완료 상태 저장 (새로고침 후에도 유지)
+  localStorage.setItem('att_checked_' + app.sessionId, '1');
+  showAttCheckedUI();
 }
 </script>
 </body>
