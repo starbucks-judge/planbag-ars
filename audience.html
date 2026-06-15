@@ -330,6 +330,37 @@ const app = {
 };
 
 // ============================================================
+// 세션 복원 (새로고침 시 자동 재입장)
+// ============================================================
+window.addEventListener('DOMContentLoaded', async () => {
+  const saved = localStorage.getItem('ars_session');
+  if (!saved) return;
+  try {
+    const { code, name, sessionId } = JSON.parse(saved);
+    // Supabase에서 세션 아직 활성인지 확인
+    const { data: session, error } = await sb.from('sessions')
+      .select('*').eq('id', sessionId).eq('is_active', true).single();
+    if (error || !session) { localStorage.removeItem('ars_session'); return; }
+    // 복원
+    app.code = code;
+    app.name = name;
+    app.sessionId = session.id;
+    app.sessionData = session;
+    app.accessLogged = true;
+    // 문항 로드
+    const { data: questions } = await sb.from('questions')
+      .select('*').eq('session_id', session.id).order('sort_order');
+    app.questions = (questions || []).map(q => ({
+      id: q.id, type: q.type, text: q.text,
+      options: q.options || [], timeLimit: q.time_limit,
+      showResult: q.show_result, isActive: q.is_active, isClosed: q.is_closed
+    }));
+    subscribeQuestions(session.id);
+    enterHome();
+  } catch { localStorage.removeItem('ars_session'); }
+});
+
+// ============================================================
 // JOIN
 // ============================================================
 function toggleAnon(el) {
@@ -361,6 +392,11 @@ async function joinSession() {
   app.sessionId = session.id;
   app.sessionData = session;
 
+  // 세션 정보 저장 (새로고침 시 복원용)
+  localStorage.setItem('ars_session', JSON.stringify({
+    code, name: app.name, sessionId: session.id
+  }));
+
   // 문항 로드
   const { data: questions } = await sb.from('questions')
     .select('*').eq('session_id', session.id).order('sort_order');
@@ -384,6 +420,14 @@ async function joinSession() {
 
 function subscribeQuestions(sessionId) {
   sb.channel('audience-questions')
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'sessions', filter: `id=eq.${sessionId}` }, (payload) => {
+      // 세션 종료 시 localStorage 클리어 후 입장 화면으로
+      if (!payload.new.is_active) {
+        localStorage.removeItem('ars_session');
+        alert('행사가 종료되었습니다');
+        location.reload();
+      }
+    })
     .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'questions', filter: `session_id=eq.${sessionId}` }, (payload) => {
       const q = payload.new;
       const idx = app.questions.findIndex(x => x.id === q.id);
