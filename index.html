@@ -447,7 +447,7 @@ textarea{resize:vertical;min-height:80px}
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('event-modal')">취소</button>
-      <button class="btn btn-primary" onclick="createEvent()">만들기</button>
+      <button class="btn btn-primary" onclick="createNewEvent()">만들기</button>
     </div>
   </div>
 </div>
@@ -542,7 +542,7 @@ function openCreateEventModal() {
   document.getElementById('event-modal').classList.add('open');
 }
 
-async function createEvent() {
+async function createNewEvent() {
   const name = document.getElementById('m-name').value.trim();
   if (!name) { alert('행사명을 입력해주세요'); return; }
   const code = Math.random().toString(36).substr(2,6).toUpperCase();
