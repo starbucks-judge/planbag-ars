@@ -367,12 +367,12 @@ textarea{resize:vertical;min-height:80px}
             </div>
             <div style="display:flex;gap:8px;margin-top:12px">
               <button class="btn btn-secondary" style="flex:1" onclick="prevQuestion()">◀ 이전</button>
-              <button class="btn btn-primary" style="flex:1" onclick="launchQuestion()">출제하기</button>
+              <button class="btn btn-primary" style="flex:1" id="launch-btn" onclick="launchQuestion()">▶ 출제하기</button>
               <button class="btn btn-secondary" style="flex:1" onclick="nextQuestion()">다음 ▶</button>
             </div>
             <div style="display:flex;gap:8px;margin-top:8px">
-              <button class="btn btn-ghost btn-sm" style="flex:1" onclick="toggleResults()">결과 공개 토글</button>
-              <button class="btn btn-danger btn-sm" style="flex:1" onclick="closeQuestion()">문항 마감</button>
+              <button class="btn btn-ghost btn-sm" style="flex:1" id="toggle-result-btn" onclick="toggleResults()">👁 결과 공개 중</button>
+              <button class="btn btn-danger btn-sm" style="flex:1" id="close-btn" onclick="closeQuestion()">⏹ 문항 마감</button>
             </div>
           </div>
           <div class="q-list-panel">
@@ -984,29 +984,63 @@ function renderCurrentQ(q) {
 }
 
 async function launchQuestion() {
-  if (state.currentQIndex < 0 || !state.sessionActive) { alert(state.sessionActive ? '문항을 선택해주세요' : '세션을 먼저 시작해주세요'); return; }
+  if (state.currentQIndex < 0) { alert('문항을 선택해주세요'); return; }
+  if (!state.sessionActive) { alert('세션을 먼저 시작해주세요'); return; }
   const q = state.questions[state.currentQIndex];
+  if (!q.dbId) { alert('문항을 먼저 저장해주세요 (문항 관리 탭에서 저장)'); return; }
   state.activeQuestion = q;
   await sb.from('ars_questions').update({ is_active: false }).eq('session_id', state.sessionId);
-  if (q.dbId) await sb.from('ars_questions').update({ is_active: true, is_closed: false }).eq('id', q.dbId);
+  await sb.from('ars_questions').update({ is_active: true, is_closed: false }).eq('id', q.dbId);
+  // 버튼 상태 업데이트
+  document.getElementById('launch-btn').textContent = '✅ 출제 중';
+  document.getElementById('close-btn').textContent = '⏹ 문항 마감';
+  document.getElementById('close-btn').className = 'btn btn-danger btn-sm';
+  // 현재 show_result 상태 표시
+  updateToggleResultBtn(q.showResult);
   refreshLiveQList();
 }
 
 async function closeQuestion() {
   if (!state.activeQuestion) return;
-  if (state.activeQuestion.dbId) await sb.from('ars_questions').update({ is_active: false, is_closed: true }).eq('id', state.activeQuestion.dbId);
-  state.responses[state.activeQuestion.id] = true;
-  state.activeQuestion = null;
-  refreshLiveQList();
-  document.getElementById('current-q-area').innerHTML = `<div class="empty" style="background:var(--surface);border:1px solid var(--border);border-radius:12px"><div class="empty-icon">✅</div><div class="empty-title">문항 마감 완료</div></div>`;
+  const isClosed = state.responses[state.activeQuestion.id];
+  if (isClosed) {
+    // 마감 취소
+    await sb.from('ars_questions').update({ is_active: true, is_closed: false }).eq('id', state.activeQuestion.dbId);
+    delete state.responses[state.activeQuestion.id];
+    document.getElementById('close-btn').textContent = '⏹ 문항 마감';
+    document.getElementById('close-btn').className = 'btn btn-danger btn-sm';
+    refreshLiveQList();
+  } else {
+    // 마감
+    if (state.activeQuestion.dbId) await sb.from('ars_questions').update({ is_active: false, is_closed: true }).eq('id', state.activeQuestion.dbId);
+    state.responses[state.activeQuestion.id] = true;
+    document.getElementById('close-btn').textContent = '↩ 마감 취소';
+    document.getElementById('close-btn').className = 'btn btn-secondary btn-sm';
+    refreshLiveQList();
+  }
+}
+
+function updateToggleResultBtn(showResult) {
+  const btn = document.getElementById('toggle-result-btn');
+  if (!btn) return;
+  if (showResult) {
+    btn.textContent = '👁 결과 공개 중';
+    btn.className = 'btn btn-success btn-sm';
+    btn.style.flex = '1';
+  } else {
+    btn.textContent = '🚫 결과 비공개 중';
+    btn.className = 'btn btn-ghost btn-sm';
+    btn.style.flex = '1';
+  }
 }
 
 async function toggleResults() {
-  if (!state.activeQuestion?.dbId) return;
+  if (!state.activeQuestion?.dbId) { alert('출제 중인 문항이 없습니다'); return; }
   const { data } = await sb.from('ars_questions').select('show_result').eq('id', state.activeQuestion.dbId).single();
   const nv = !data.show_result;
   await sb.from('ars_questions').update({ show_result: nv }).eq('id', state.activeQuestion.dbId);
-  alert('결과 ' + (nv?'공개':'비공개') + '로 변경');
+  state.activeQuestion.showResult = nv;
+  updateToggleResultBtn(nv);
 }
 
 function prevQuestion() { if (state.currentQIndex > 0) selectLiveQ(state.currentQIndex - 1); }
@@ -1037,10 +1071,12 @@ function renderUpflow() {
       <div class="upflow-votes"><div class="vote-count">${u.votes}</div><div class="vote-label">추천</div></div>
       <div style="flex:1">
         <div class="upflow-text">${u.text}</div>
-        <div class="upflow-meta">${u.time} ${u.answered?'✅ 답변완료':'• 미답변'}</div>
+        <div class="upflow-meta">${u.time} ${u.answered ? '✅ 답변완료' : '• 미답변'}</div>
         <div class="upflow-actions">
-          ${!u.answered?`<button class="btn btn-success btn-sm" onclick="markAnswered('${u.id}')">답변완료</button>`:''}
-          <button class="btn btn-danger btn-sm" onclick="deleteUpflow('${u.id}')">삭제</button>
+          <button class="btn btn-sm ${u.answered ? 'btn-ghost' : 'btn-success'}" onclick="markAnswered('${u.id}', ${u.answered})">
+            ${u.answered ? '↩ 답변완료 취소' : '✅ 답변완료'}
+          </button>
+          <button class="btn btn-danger btn-sm" onclick="deleteUpflow('${u.id}')">🗑 삭제</button>
         </div>
       </div>
     </div>`).join('');
@@ -1051,8 +1087,15 @@ function sortUpflow(by) {
   else state.upflows.sort((a,b)=>b.time.localeCompare(a.time));
   renderUpflow();
 }
-async function markAnswered(id) { await sb.from('ars_upflows').update({ is_answered: true }).eq('id', id); await loadUpflows(); }
-async function deleteUpflow(id) { await sb.from('ars_upflows').delete().eq('id', id); await loadUpflows(); }
+async function markAnswered(id, currentState) {
+  await sb.from('ars_upflows').update({ is_answered: !currentState }).eq('id', id);
+  await loadUpflows();
+}
+async function deleteUpflow(id) {
+  if (!confirm('이 질문을 삭제하시겠습니까?\n삭제 후 복구할 수 없습니다.')) return;
+  await sb.from('ars_upflows').delete().eq('id', id);
+  await loadUpflows();
+}
 
 // ============================================================
 // ATTENDANCE
