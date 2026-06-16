@@ -547,7 +547,8 @@ const state = {
   upflows: [],
   responses: {},
   participantCount: 0,
-  realtimeChannel: null
+  realtimeChannel: null,
+  pollInterval: null
 };
 
 // ============================================================
@@ -1026,6 +1027,7 @@ async function endSession() {
   state.sessionActive = false;
   setLiveUI(false);
   if (state.realtimeChannel) { sb.removeChannel(state.realtimeChannel); state.realtimeChannel = null; }
+  if (state.pollInterval) { clearInterval(state.pollInterval); state.pollInterval = null; }
 }
 
 function setLiveUI(live) {
@@ -1054,7 +1056,7 @@ function subscribeRealtime(sessionId) {
     })
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'ars_responses', filter: `session_id=eq.${sessionId}` }, async () => {
       if (!state.activeQuestion?.dbId) return;
-      await refreshResponseCount(state.activeQuestion.dbId, sessionId);
+      await refreshResponseCount(state.activeQuestion.dbId);
     })
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'ars_upflows', filter: `session_id=eq.${sessionId}` }, async () => {
       await loadUpflows();
@@ -1062,10 +1064,20 @@ function subscribeRealtime(sessionId) {
     .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'ars_upflows', filter: `session_id=eq.${sessionId}` }, async () => {
       await loadUpflows();
     })
-    .subscribe();
+    .subscribe((status) => {
+      console.log('Realtime 상태:', status);
+    });
 
   // 초기 참여자 수 로드
   refreshParticipantCount(sessionId);
+
+  // 폴링 백업 (Realtime 미작동 시 5초마다 응답수 갱신)
+  if (state.pollInterval) clearInterval(state.pollInterval);
+  state.pollInterval = setInterval(async () => {
+    if (state.activeQuestion?.dbId) {
+      await refreshResponseCount(state.activeQuestion.dbId);
+    }
+  }, 5000);
 }
 
 async function refreshParticipantCount(sessionId) {
@@ -1078,16 +1090,37 @@ async function refreshParticipantCount(sessionId) {
   document.getElementById('live-realtime-count').textContent = state.participantCount;
 }
 
-async function refreshResponseCount(questionDbId, sessionId) {
-  const { count } = await sb.from('ars_responses').select('*', { count: 'exact', head: true }).eq('question_id', questionDbId);
-  const total = Math.max(state.participantCount, 1);
-  const pct = Math.round((count || 0) / total * 100);
+async function refreshResponseCount(questionDbId) {
+  if (!questionDbId) return;
+  const { data: resps } = await sb.from('ars_responses')
+    .select('answer_index, answer').eq('question_id', questionDbId);
+  const count = (resps || []).length;
+  const total = Math.max(state.participantCount, count, 1);
+  const pct = Math.min(Math.round(count / total * 100), 100);
   const el1 = document.getElementById('resp-progress');
   const el2 = document.getElementById('resp-count');
   const el3 = document.getElementById('resp-pct');
   if (el1) el1.style.width = pct + '%';
-  if (el2) el2.textContent = '응답 ' + (count||0) + '명';
+  if (el2) el2.textContent = '응답 ' + count + '명';
   if (el3) el3.textContent = pct + '%';
+
+  // 객관식이면 결과 바도 실시간 업데이트
+  if (state.activeQuestion?.type === 'mc' && state.activeQuestion.options?.length) {
+    const opts = state.activeQuestion.options;
+    const counts = new Array(opts.length).fill(0);
+    (resps || []).forEach(r => { if (r.answer_index !== null && r.answer_index < counts.length) counts[r.answer_index]++; });
+    const total2 = counts.reduce((a,b)=>a+b,0) || 1;
+    const letters = ['A','B','C','D','E','F'];
+    const barsHtml = opts.map((opt,i) => {
+      const p = Math.round(counts[i]/total2*100);
+      return `<div class="result-item">
+        <div class="result-label"><span>${letters[i]}. ${opt}</span><span>${counts[i]}명 (${p}%)</span></div>
+        <div class="result-bar-wrap"><div class="result-bar-fill" style="width:${p}%"><span>${p>10?p+'%':''}</span></div></div>
+      </div>`;
+    }).join('');
+    const existing = document.querySelector('.results-bars');
+    if (existing) existing.innerHTML = barsHtml;
+  }
 }
 
 // ============================================================
@@ -1146,11 +1179,20 @@ async function launchQuestion() {
   state.activeQuestion = q;
   await sb.from('ars_questions').update({ is_active: false }).eq('session_id', state.sessionId);
   await sb.from('ars_questions').update({ is_active: true, is_closed: false }).eq('id', q.dbId);
+
+  // 응답수 즉시 초기화 후 로드
+  const el1 = document.getElementById('resp-progress');
+  const el2 = document.getElementById('resp-count');
+  const el3 = document.getElementById('resp-pct');
+  if (el1) el1.style.width = '0%';
+  if (el2) el2.textContent = '응답 0명';
+  if (el3) el3.textContent = '0%';
+  await refreshResponseCount(q.dbId);
+
   // 버튼 상태 업데이트
   document.getElementById('launch-btn').textContent = '✅ 출제 중';
   document.getElementById('close-btn').textContent = '⏹ 문항 마감';
   document.getElementById('close-btn').className = 'btn btn-danger btn-sm';
-  // 현재 show_result 상태 표시
   updateToggleResultBtn(q.showResult);
   refreshLiveQList();
 }
