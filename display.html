@@ -395,13 +395,13 @@ async function refreshResponseCount() {
   const { data: resps } = await sb.from('ars_responses')
     .select('*').eq('question_id', ds.currentQuestion.id);
   const count = (resps || []).length;
-  const total = Math.max(ds.participantCount, 1);
-  const pct = Math.round(count / total * 100);
+  // 응답률은 참여자수 기준이 아닌 최대 응답자 기준으로 표시 (100% 초과 방지)
+  const total = Math.max(ds.participantCount, count, 1);
+  const pct = Math.min(Math.round(count / total * 100), 100);
   document.getElementById('ds-prog-fill').style.width = pct + '%';
   document.getElementById('ds-resp-count').textContent = `응답 ${count}명`;
   document.getElementById('ds-resp-pct').textContent = pct + '%';
 
-  // MC 실시간 바 업데이트
   if (ds.currentQuestion.type === 'mc') renderMCBars(ds.currentQuestion, resps || []);
   else if (ds.currentQuestion.type === 'word') renderWordCloud(resps || []);
   else if (ds.currentQuestion.type === 'open') renderOpenBubbles(resps || []);

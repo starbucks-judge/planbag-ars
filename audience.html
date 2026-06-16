@@ -438,11 +438,13 @@ function subscribeQuestions(sessionId) {
       const onHomeScreen = document.getElementById('screen-home').classList.contains('active');
 
       if (q.is_active) {
-        // 새 문항 출제 → 퀴즈 화면으로 자동 이동
+        // 새 문항 출제 → 해당 문항으로 바로 이동
         const qi = app.questions.findIndex(x => x.id === q.id);
         if (qi >= 0) {
           app.currentQ = qi;
           app.answered = false;
+          const submitBtn = document.getElementById('submit-btn');
+          if (submitBtn) { submitBtn.style.display = 'block'; submitBtn.onclick = submitAnswer; }
           showScreen('question');
           renderQuestion();
         }
@@ -505,10 +507,25 @@ function goHome() { showScreen('home'); }
 // QUIZ / DOWNFLOW
 // ============================================================
 function showQuiz() {
-  app.currentQ = 0;
-  app.answered = false;
-  renderQuestion();
-  showScreen('question');
+  // 출제 중인 문항 찾기
+  const activeQ = app.questions.find(q => q.isActive);
+  if (activeQ) {
+    const idx = app.questions.indexOf(activeQ);
+    app.currentQ = idx;
+    app.answered = false;
+    renderQuestion();
+    showScreen('question');
+  } else {
+    // 출제 중인 문항 없음 → 안내
+    showScreen('question');
+    document.getElementById('q-body').innerHTML = `
+      <div style="text-align:center;padding:60px 20px">
+        <div style="font-size:48px;margin-bottom:16px">⏳</div>
+        <div style="font-size:20px;font-weight:700;color:var(--text);margin-bottom:8px">대기 중입니다</div>
+        <div style="font-size:14px;color:var(--muted)">진행자가 문항을 출제하면 자동으로 표시됩니다</div>
+      </div>`;
+    document.getElementById('submit-btn').style.display = 'none';
+  }
 }
 
 function renderQuestion() {
@@ -517,9 +534,12 @@ function renderQuestion() {
   const total = app.questions.length;
   document.getElementById('q-progress').style.width = ((app.currentQ+1)/total*100)+'%';
   document.getElementById('q-num-label').textContent = (app.currentQ+1)+' / '+total;
-  document.getElementById('submit-btn').disabled = false;
-  document.getElementById('submit-btn').className = 'submit-btn';
-  document.getElementById('submit-btn').textContent = '응답 제출하기';
+  const submitBtn = document.getElementById('submit-btn');
+  submitBtn.disabled = false;
+  submitBtn.className = 'submit-btn';
+  submitBtn.textContent = '응답 제출하기';
+  submitBtn.style.display = 'block';
+  submitBtn.onclick = submitAnswer;
   app.answered = false;
 
   if(app.timerInterval) clearInterval(app.timerInterval);
