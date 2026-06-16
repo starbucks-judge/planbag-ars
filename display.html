@@ -534,7 +534,8 @@ let dsCurrentQIdx = -1;
 
 function dsGoStandby() { showStandby(); }
 
-function dsShowUpflow() {
+async function dsShowUpflow() {
+  await loadUpflows();
   renderUpflowScreen();
   showScreen('upflow');
 }

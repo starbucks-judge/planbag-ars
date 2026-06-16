@@ -180,7 +180,9 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   </div>
   <div class="join-card">
     <div class="join-card-title">행사에 참여하기</div>
-    <input class="code-input" id="code-input" type="text" placeholder="참여 코드 입력" maxlength="6" autocapitalize="characters" autocomplete="off" oninput="this.value=this.value.toUpperCase()">
+    <div class="code-input-wrap" id="code-input-wrap">
+      <input class="code-input" id="code-input" type="text" placeholder="참여 코드 입력" maxlength="6" autocapitalize="characters" autocomplete="off" oninput="this.value=this.value.toUpperCase()">
+    </div>
     <div id="name-section">
       <input class="name-input" id="name-input" type="text" placeholder="이름을 입력해주세요 (선택)">
     </div>
@@ -190,6 +192,19 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     </div>
     <button class="join-btn" onclick="joinSession()">참여하기 →</button>
   </div>
+  <script>
+    // URL에 code 파라미터 있으면 코드 입력창 숨기고 이름만 입력
+    (function() {
+      const p = new URLSearchParams(location.search);
+      const c = p.get('code');
+      if (c) {
+        const wrap = document.getElementById('code-input-wrap');
+        if (wrap) wrap.style.display = 'none';
+        const title = document.querySelector('.join-card-title');
+        if (title) title.textContent = '이름을 입력하고 참여하세요';
+      }
+    })();
+  </script>
 </div>
 
 <!-- WAITING SCREEN -->
@@ -333,21 +348,29 @@ const app = {
 // 세션 복원 (새로고침 시 자동 재입장)
 // ============================================================
 window.addEventListener('DOMContentLoaded', async () => {
+  // 1) URL 파라미터에 code 있으면 자동 입장
+  const params = new URLSearchParams(location.search);
+  const urlCode = params.get('code');
+  if (urlCode) {
+    app.code = urlCode.toUpperCase();
+    app.name = '참여자';
+    await autoJoin(urlCode.toUpperCase());
+    return;
+  }
+
+  // 2) localStorage에 저장된 세션 복원
   const saved = localStorage.getItem('ars_session');
   if (!saved) return;
   try {
     const { code, name, sessionId } = JSON.parse(saved);
-    // Supabase에서 세션 아직 활성인지 확인
     const { data: session, error } = await sb.from('ars_sessions')
       .select('*').eq('id', sessionId).eq('is_active', true).single();
     if (error || !session) { localStorage.removeItem('ars_session'); return; }
-    // 복원
     app.code = code;
     app.name = name;
     app.sessionId = session.id;
     app.sessionData = session;
     app.accessLogged = true;
-    // 문항 로드
     const { data: questions } = await sb.from('ars_questions')
       .select('*').eq('session_id', session.id).order('sort_order');
     app.questions = (questions || []).map(q => ({
@@ -360,6 +383,56 @@ window.addEventListener('DOMContentLoaded', async () => {
   } catch { localStorage.removeItem('ars_session'); }
 });
 
+async function autoJoin(code) {
+  // URL 코드로 자동 입장 - 이름 입력창 표시
+  document.getElementById('code-input').value = code;
+  document.getElementById('code-input').style.display = 'none'; // 코드 입력창 숨김
+  document.getElementById('code-input').closest('.code-input-wrap').style.display = 'none';
+
+  // 세션 확인
+  const { data: session, error } = await sb.from('ars_sessions')
+    .select('*').eq('access_code', code).eq('is_active', true).single();
+
+  if (error || !session) {
+    // 세션 없으면 대기 화면 표시
+    showScreen('waiting');
+    document.getElementById('waiting-code-display').textContent = code;
+    document.getElementById('waiting-name-display').textContent = '행사 시작을 기다리는 중...';
+    // 주기적으로 세션 활성화 확인
+    const checkInterval = setInterval(async () => {
+      const { data: s } = await sb.from('ars_sessions')
+        .select('*').eq('access_code', code).eq('is_active', true).single();
+      if (s) {
+        clearInterval(checkInterval);
+        await completeJoin(s, '참여자');
+      }
+    }, 3000);
+    return;
+  }
+  await completeJoin(session, '참여자');
+}
+
+async function completeJoin(session, name) {
+  app.sessionId = session.id;
+  app.sessionData = session;
+  app.name = name;
+  localStorage.setItem('ars_session', JSON.stringify({
+    code: session.access_code, name: app.name, sessionId: session.id
+  }));
+  const { data: questions } = await sb.from('ars_questions')
+    .select('*').eq('session_id', session.id).order('sort_order');
+  app.questions = (questions || []).map(q => ({
+    id: q.id, type: q.type, text: q.text,
+    options: q.options || [], timeLimit: q.time_limit,
+    showResult: q.show_result, isActive: q.is_active, isClosed: q.is_closed
+  }));
+  subscribeQuestions(session.id);
+  // 이름 입력 여부 확인
+  const nameInput = document.getElementById('name-input');
+  if (nameInput?.value.trim()) app.name = nameInput.value.trim();
+  enterHome();
+}
+
 // ============================================================
 // JOIN
 // ============================================================
@@ -370,7 +443,8 @@ function toggleAnon(el) {
 }
 
 async function joinSession() {
-  const code = document.getElementById('code-input').value.trim().toUpperCase();
+  const codeEl = document.getElementById('code-input');
+  const code = (codeEl.value || new URLSearchParams(location.search).get('code') || '').trim().toUpperCase();
   if(code.length < 4) { shakeInput(); return; }
   app.code = code;
   app.name = app.isAnon ? '익명' : (document.getElementById('name-input').value.trim() || '참여자');
@@ -383,39 +457,16 @@ async function joinSession() {
 
   if (error || !session) {
     joinBtn.textContent = '참여하기 →'; joinBtn.disabled = false;
-    document.getElementById('code-input').style.borderColor = '#ef4444';
-    setTimeout(() => document.getElementById('code-input').style.borderColor = '', 1500);
+    codeEl.style.borderColor = '#ef4444';
+    setTimeout(() => codeEl.style.borderColor = '', 1500);
     alert('유효하지 않은 코드이거나 행사가 시작되지 않았습니다');
     return;
   }
 
-  app.sessionId = session.id;
-  app.sessionData = session;
+  await completeJoin(session, app.name);
+  joinBtn.textContent = '참여하기 →'; joinBtn.disabled = false;
+}
 
-  // 세션 정보 저장 (새로고침 시 복원용)
-  localStorage.setItem('ars_session', JSON.stringify({
-    code, name: app.name, sessionId: session.id
-  }));
-
-  // 문항 로드
-  const { data: questions } = await sb.from('ars_questions')
-    .select('*').eq('session_id', session.id).order('sort_order');
-  app.questions = (questions || []).map(q => ({
-    id: q.id, type: q.type, text: q.text,
-    options: q.options || [], timeLimit: q.time_limit,
-    showResult: q.show_result, isActive: q.is_active, isClosed: q.is_closed
-  }));
-
-  // 실시간 문항 상태 구독
-  subscribeQuestions(session.id);
-
-  showScreen('waiting');
-  document.getElementById('waiting-code-display').textContent = code;
-  document.getElementById('waiting-name-display').textContent = app.name + '님으로 참여 중';
-
-  // 이미 활성 문항이 있으면 바로 홈으로
-  const activeQ = app.questions.find(q => q.isActive);
-  if (activeQ || true) setTimeout(() => enterHome(), 1500);
 }
 
 function subscribeQuestions(sessionId) {
