@@ -947,8 +947,34 @@ async function saveQuestions() {
   if (!state.sessionId) return;
   const btn = event.target;
   btn.textContent = '저장 중...'; btn.disabled = true;
-  // 기존 문항 삭제 후 재삽입
-  await sb.from('ars_questions').delete().eq('session_id', state.sessionId);
+
+  // 1) 기존 문항 삭제
+  const { error: delError } = await sb.from('ars_questions')
+    .delete().eq('session_id', state.sessionId);
+
+  if (delError) {
+    console.error('삭제 오류:', delError);
+    // RLS 정책 문제일 수 있으므로 개별 삭제 시도
+    const { data: existing } = await sb.from('ars_questions')
+      .select('id').eq('session_id', state.sessionId);
+    if (existing?.length) {
+      for (const q of existing) {
+        await sb.from('ars_questions').delete().eq('id', q.id);
+      }
+    }
+  }
+
+  // 2) 삭제 완료 확인
+  const { data: remaining } = await sb.from('ars_questions')
+    .select('id').eq('session_id', state.sessionId);
+  if (remaining?.length > 0) {
+    // 아직 남아있으면 개별 삭제
+    for (const q of remaining) {
+      await sb.from('ars_questions').delete().eq('id', q.id);
+    }
+  }
+
+  // 3) 새 문항 삽입
   if (state.questions.length > 0) {
     const rows = state.questions.map((q,i) => ({
       session_id: state.sessionId, sort_order: i,
@@ -957,10 +983,16 @@ async function saveQuestions() {
       is_active: false, is_closed: false
     }));
     const { data, error } = await sb.from('ars_questions').insert(rows).select();
-    if (!error && data) data.forEach((sq,i) => { state.questions[i].dbId = sq.id; state.questions[i].id = sq.id; });
+    if (error) {
+      alert('문항 저장 실패: ' + error.message);
+      btn.textContent = '💾 저장'; btn.disabled = false;
+      return;
+    }
+    if (data) data.forEach((sq,i) => { state.questions[i].dbId = sq.id; state.questions[i].id = sq.id; });
   }
+
   btn.textContent = '💾 저장'; btn.disabled = false;
-  alert('문항이 저장되었습니다');
+  alert('문항이 저장되었습니다 (' + state.questions.length + '개)');
   refreshLiveQList();
 }
 
