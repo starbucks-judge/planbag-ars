@@ -95,7 +95,15 @@ html,body{height:100%;font-family:'Pretendard',sans-serif;overflow:hidden;backgr
 .ds-upflow-item.top .ds-upflow-votes{color:var(--ds-accent,#e94560)}
 .ds-upflow-text{font-size:clamp(18px,2.5vw,28px);font-weight:600;color:#fff;line-height:1.4;flex:1}
 
-/* 티커 */
+/* 관리자 컨트롤 패널 */
+.ds-ctrl{position:fixed;bottom:60px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:200;background:rgba(0,0,0,0.75);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:10px 14px;transition:opacity .3s}
+.ds-ctrl:hover{opacity:1}
+.ds-ctrl{opacity:.35}
+.ds-ctrl-btn{padding:8px 16px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;border:none;font-family:inherit;transition:all .15s;color:#fff}
+.ds-ctrl-btn.ghost{background:rgba(255,255,255,0.12)}.ds-ctrl-btn.ghost:hover{background:rgba(255,255,255,0.22)}
+.ds-ctrl-btn.accent{background:var(--ds-accent,#e94560)}.ds-ctrl-btn.accent:hover{opacity:.85}
+.ds-ctrl-btn.green{background:#059669}.ds-ctrl-btn.green:hover{opacity:.85}
+.ds-ctrl-divider{width:1px;background:rgba(255,255,255,0.15);margin:0 4px}
 .ds-ticker{position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.8);border-top:1px solid rgba(255,255,255,0.08);padding:10px 20px;display:flex;align-items:center;gap:14px;font-size:15px;z-index:100}
 .ds-ticker-label{color:var(--ds-accent,#e94560);font-weight:700;white-space:nowrap}
 .ds-ticker-track{overflow:hidden;flex:1}
@@ -182,6 +190,17 @@ html,body{height:100%;font-family:'Pretendard',sans-serif;overflow:hidden;backgr
   </div>
   <div style="font-size:clamp(28px,4vw,48px);font-weight:800;color:#fff;margin-bottom:8px">💬 청중 질문</div>
   <div class="ds-upflow-list" id="ds-upflow-list"></div>
+</div>
+
+<!-- 관리자 컨트롤 패널 (마우스 올리면 표시) -->
+<div class="ds-ctrl" id="ds-ctrl">
+  <button class="ds-ctrl-btn ghost" onclick="dsGoStandby()">🏠 대기화면</button>
+  <div class="ds-ctrl-divider"></div>
+  <button class="ds-ctrl-btn ghost" onclick="dsPrevQ()">◀ 이전</button>
+  <button class="ds-ctrl-btn accent" id="ds-ctrl-current">문항 선택</button>
+  <button class="ds-ctrl-btn ghost" onclick="dsNextQ()">다음 ▶</button>
+  <div class="ds-ctrl-divider"></div>
+  <button class="ds-ctrl-btn green" onclick="dsShowUpflow()">💬 청중질문</button>
 </div>
 
 <!-- 티커 -->
@@ -333,6 +352,9 @@ function subscribeRealtime(sessionId) {
       else ds.questions.push(q);
 
       if (q.is_active) {
+        const idx = ds.questions.findIndex(x => x.id === q.id);
+        dsCurrentQIdx = idx;
+        updateCtrlLabel();
         showQuestion(q);
       } else if (q.is_closed && ds.currentQuestion?.id === q.id) {
         // 마감 → 결과 표시
@@ -506,8 +528,42 @@ function renderTicker() {
 }
 
 // ============================================================
-// 화면 전환
+// 수동 컨트롤 (관리자용 버튼)
 // ============================================================
+let dsCurrentQIdx = -1;
+
+function dsGoStandby() { showStandby(); }
+
+function dsShowUpflow() {
+  renderUpflowScreen();
+  showScreen('upflow');
+}
+
+function dsPrevQ() {
+  if (!ds.questions.length) return;
+  dsCurrentQIdx = Math.max(0, dsCurrentQIdx - 1);
+  const q = ds.questions[dsCurrentQIdx];
+  if (q) { showQuestion(q); updateCtrlLabel(); }
+}
+
+function dsNextQ() {
+  if (!ds.questions.length) return;
+  dsCurrentQIdx = Math.min(ds.questions.length - 1, dsCurrentQIdx + 1);
+  const q = ds.questions[dsCurrentQIdx];
+  if (q) { showQuestion(q); updateCtrlLabel(); }
+}
+
+function updateCtrlLabel() {
+  const btn = document.getElementById('ds-ctrl-current');
+  if (!btn) return;
+  if (dsCurrentQIdx >= 0 && ds.questions[dsCurrentQIdx]) {
+    btn.textContent = `${dsCurrentQIdx + 1}/${ds.questions.length} 번`;
+  } else {
+    btn.textContent = '문항 선택';
+  }
+}
+
+// 화면 전환
 function showScreen(name) {
   document.querySelectorAll('.dscreen').forEach(s => s.classList.remove('active'));
   document.getElementById('ds-' + name).classList.add('active');

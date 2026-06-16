@@ -1130,16 +1130,64 @@ function refreshLiveQList() {
   const container = document.getElementById('live-q-list');
   if (!state.questions.length) { container.innerHTML = '<div style="padding:14px;text-align:center;color:var(--muted);font-size:13px">문항을 먼저 등록해주세요</div>'; return; }
   container.innerHTML = state.questions.map((q,i) => {
-    const isActive = state.activeQuestion?.id === q.id;
-    const isDone = state.responses[q.id];
-    const statusCls = isDone ? 'status-done' : isActive ? 'status-live' : 'status-waiting';
-    const statusTxt = isDone ? '완료' : isActive ? '진행중' : '대기';
-    return `<div class="q-list-item ${isActive?'active-q':''} ${isDone?'done':''}" onclick="selectLiveQ(${i})">
+    const isActive = q.isActive || (state.activeQuestion?.id === q.id && !q.isClosed);
+    const isClosed = q.isClosed || !!state.responses[q.id];
+    const statusCls = isClosed ? 'status-done' : isActive ? 'status-live' : 'status-waiting';
+    const statusTxt = isClosed ? '완료' : isActive ? '진행중' : '대기';
+    const dbId = q.dbId || q.id;
+    return `<div class="q-list-item ${isActive?'active-q':''} ${isClosed?'done':''}" onclick="selectLiveQ(${i})">
       <span class="q-list-num">${i+1}</span>
       <span class="q-list-text">${q.text||'(내용 없음)'}</span>
-      <span class="q-list-status ${statusCls}">${statusTxt}</span>
+      <div style="display:flex;gap:4px;margin-left:auto;flex-shrink:0" onclick="event.stopPropagation()">
+        ${isActive ? `
+          <button class="btn btn-sm" style="padding:3px 8px;font-size:10px;background:${q.showResult?'#f0fdf4':'#f9fafb'};color:${q.showResult?'#059669':'#6b7280'};border:1px solid ${q.showResult?'#bbf7d0':'#e5e7eb'}"
+            onclick="toggleResultByQ('${q.id}','${dbId}',${q.showResult})">
+            ${q.showResult ? '👁공개' : '🚫비공개'}
+          </button>
+          <button class="btn btn-sm" style="padding:3px 8px;font-size:10px;${isClosed?'background:#f9fafb;color:#6b7280;border:1px solid #e5e7eb':'background:#fee2e2;color:#dc2626;border:1px solid #fecaca'}"
+            onclick="toggleCloseByQ('${q.id}','${dbId}',${isClosed})">
+            ${isClosed ? '↩취소' : '⏹마감'}
+          </button>
+        ` : `<span class="q-list-status ${statusCls}">${statusTxt}</span>`}
+      </div>
     </div>`;
   }).join('');
+}
+
+async function toggleResultByQ(qId, dbId, currentShowResult) {
+  const nv = !currentShowResult;
+  const { error } = await sb.from('ars_questions').update({ show_result: nv }).eq('id', dbId);
+  if (error) { alert('변경 실패: ' + error.message); return; }
+  const q = state.questions.find(q => q.id === qId);
+  if (q) q.showResult = nv;
+  if (state.activeQuestion?.id === qId) {
+    state.activeQuestion.showResult = nv;
+    updateToggleResultBtn(nv);
+  }
+  refreshLiveQList();
+}
+
+async function toggleCloseByQ(qId, dbId, isClosed) {
+  if (isClosed) {
+    await sb.from('ars_questions').update({ is_active: true, is_closed: false }).eq('id', dbId);
+    const q = state.questions.find(q => q.id === qId);
+    if (q) { q.isActive = true; q.isClosed = false; }
+    delete state.responses[qId];
+    if (state.activeQuestion?.id === qId) {
+      document.getElementById('close-btn').textContent = '⏹ 문항 마감';
+      document.getElementById('close-btn').className = 'btn btn-danger btn-sm';
+    }
+  } else {
+    await sb.from('ars_questions').update({ is_active: false, is_closed: true }).eq('id', dbId);
+    const q = state.questions.find(q => q.id === qId);
+    if (q) { q.isActive = false; q.isClosed = true; }
+    state.responses[qId] = true;
+    if (state.activeQuestion?.id === qId) {
+      document.getElementById('close-btn').textContent = '↩ 마감 취소';
+      document.getElementById('close-btn').className = 'btn btn-secondary btn-sm';
+    }
+  }
+  refreshLiveQList();
 }
 
 function selectLiveQ(i) {
