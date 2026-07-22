@@ -186,7 +186,7 @@ html,body{height:100%;font-family:'Pretendard',sans-serif;overflow:hidden;backgr
 <div class="dscreen" id="ds-upflow">
   <div class="ds-q-header">
     <div class="ds-live-badge"><div class="ds-live-dot"></div> 청중 질문</div>
-    <div style="color:rgba(255,255,255,0.4);font-size:16px">추천 순</div>
+    <div style="color:rgba(255,255,255,0.4);font-size:16px" id="ds-upflow-mode-label">선택된 질문</div>
   </div>
   <div style="font-size:clamp(28px,4vw,48px);font-weight:800;color:#fff;margin-bottom:8px">💬 청중 질문</div>
   <div class="ds-upflow-list" id="ds-upflow-list"></div>
@@ -516,31 +516,55 @@ async function loadUpflows() {
 
 function applyHighlightChange() {
   const highlighted = ds.upflows.filter(u => u.is_highlighted);
+  const upflowActive = document.getElementById('ds-upflow').classList.contains('active');
+  const modeLabel = document.getElementById('ds-upflow-mode-label');
+  const isAllMode = modeLabel?.textContent === '전체 질문 목록 (추천순)';
+
   if (highlighted.length > 0) {
-    // highlight 있음 → 청중질문 화면으로 전환
+    // highlight 있음 → 선택 질문 표시로 전환
     showScreen('upflow');
-    renderUpflowContent();
+    renderUpflowContent(false);
   } else {
-    // highlight 해제 → 대기화면으로
-    if (document.getElementById('ds-upflow').classList.contains('active')) {
+    // highlight 해제됨
+    if (upflowActive && isAllMode) {
+      // 전체목록 모드였으면 그대로 유지
+      renderUpflowContent(true);
+    } else if (upflowActive) {
+      // 선택 모드였으면 대기화면으로
       showStandby();
     }
   }
 }
 
-function renderUpflowContent() {
+function renderUpflowContent(showAll = false) {
   const highlighted = ds.upflows.filter(u => u.is_highlighted);
   const list = document.getElementById('ds-upflow-list');
+  const modeLabel = document.getElementById('ds-upflow-mode-label');
   if (!list) return;
 
-  if (highlighted.length > 0) {
+  if (showAll) {
+    // 전체 목록 표시 (추천수 제외)
+    if (modeLabel) modeLabel.textContent = '전체 질문 목록 (추천순)';
+    const allQ = ds.upflows.filter(u => !u.is_answered);
+    if (allQ.length === 0) {
+      list.innerHTML = `<div style="text-align:center;padding:60px;color:rgba(255,255,255,0.3);font-size:22px">아직 등록된 질문이 없습니다</div>`;
+    } else {
+      list.innerHTML = allQ.map((u, i) => `
+        <div class="ds-upflow-item ${i===0?'top':''}" style="padding:24px 32px">
+          <div class="ds-upflow-text">${u.text}</div>
+        </div>`).join('');
+    }
+  } else if (highlighted.length > 0) {
+    // 선택된 질문 크게 표시 (추천수 제외)
+    if (modeLabel) modeLabel.textContent = '선택된 질문';
     const u = highlighted[0];
     list.innerHTML = `
-      <div class="ds-upflow-item top" style="border:2px solid var(--ds-accent,#e94560);padding:40px 48px">
-        <div class="ds-upflow-votes" style="font-size:clamp(40px,6vw,72px)">${u.vote_count}</div>
-        <div class="ds-upflow-text" style="font-size:clamp(24px,3.5vw,44px);font-weight:700">${u.text}</div>
+      <div class="ds-upflow-item top" style="border:2px solid var(--ds-accent,#e94560);padding:48px 56px">
+        <div class="ds-upflow-text" style="font-size:clamp(28px,4vw,52px);font-weight:700;line-height:1.4">${u.text}</div>
       </div>`;
   } else {
+    // 아무것도 선택 안 됨
+    if (modeLabel) modeLabel.textContent = '';
     list.innerHTML = `
       <div style="text-align:center;padding:60px;color:rgba(255,255,255,0.2);font-size:20px">
         관리자가 질문을 선택하면 여기에 표시됩니다
@@ -549,7 +573,7 @@ function renderUpflowContent() {
 }
 
 function renderUpflowScreen() {
-  renderUpflowContent();
+  renderUpflowContent(false);
 }
 
 // ============================================================
@@ -588,7 +612,7 @@ function dsGoStandby() { showStandby(); }
 
 async function dsShowUpflow() {
   await loadUpflows();
-  renderUpflowContent();
+  renderUpflowContent(true); // 전체 목록 표시
   showScreen('upflow');
 }
 
