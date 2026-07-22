@@ -100,11 +100,11 @@ html,body{height:100%;font-family:'Pretendard',sans-serif;overflow:hidden;backgr
 .ds-upflow-item:hover{background:rgba(255,255,255,0.1);border-color:rgba(255,255,255,0.25);transform:translateX(4px)}
 .ds-upflow-item.selected{background:rgba(233,69,96,0.12);border-color:rgba(233,69,96,0.5)}
 .ds-upflow-item.top{border-color:rgba(233,69,96,0.3)}
-.ds-upflow-text{font-size:clamp(16px,2vw,26px);font-weight:600;color:#fff;line-height:1.45}
+.ds-upflow-text{font-size:clamp(16px,2vw,26px);font-weight:600;color:#fff;line-height:1.45;text-align:center}
 /* 선택된 질문 단독 표시 */
 .ds-upflow-selected-view{flex:1;display:flex;align-items:center;justify-content:center;padding:40px 60px}
 .ds-upflow-selected-card{background:rgba(233,69,96,0.08);border:2px solid rgba(233,69,96,0.4);border-radius:24px;padding:52px 64px;width:100%}
-.ds-upflow-selected-text{font-size:clamp(28px,4vw,56px);font-weight:700;color:#fff;line-height:1.35}
+.ds-upflow-selected-text{font-size:clamp(28px,4vw,56px);font-weight:700;color:#fff;line-height:1.35;text-align:center}
 
 /* 관리자 컨트롤 패널 */
 .ds-ctrl{position:fixed;bottom:60px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:200;background:rgba(0,0,0,0.75);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:10px 14px;transition:opacity .3s}
@@ -201,7 +201,7 @@ html,body{height:100%;font-family:'Pretendard',sans-serif;overflow:hidden;backgr
 <!-- 청중 질문 화면 -->
 <div class="dscreen" id="ds-upflow">
   <!-- 전체 목록 뷰 -->
-  <div id="ds-upflow-list-view" style="display:flex;flex-direction:column;height:100%">
+  <div id="ds-upflow-list-view" style="display:none;flex-direction:column;height:100%">
     <div class="ds-upflow-header">
       <div>
         <div class="ds-live-badge" style="margin-bottom:8px"><div class="ds-live-dot"></div> 청중 질문</div>
@@ -565,23 +565,23 @@ async function loadUpflows() {
 
 // 전체 목록 표시
 function dsShowAllUpflow() {
+  showScreen('upflow');
   const lv = document.getElementById('ds-upflow-list-view');
   const sv = document.getElementById('ds-upflow-selected-view');
   if (lv) lv.style.display = 'flex';
   if (sv) sv.style.display = 'none';
-  showScreen('upflow');
   renderUpflowList();
 }
 
 // 선택된 질문 단독 표시
 function dsShowSelectedUpflow(text) {
+  showScreen('upflow');
   const lv = document.getElementById('ds-upflow-list-view');
   const sv = document.getElementById('ds-upflow-selected-view');
   if (lv) lv.style.display = 'none';
   if (sv) sv.style.display = 'flex';
   const el = document.getElementById('ds-selected-text');
   if (el) el.textContent = text;
-  showScreen('upflow');
 }
 
 // 전체 목록 렌더링
@@ -669,7 +669,14 @@ function renderTicker() {
 // ============================================================
 let dsCurrentQIdx = -1;
 
-function dsGoStandby() { showStandby(); }
+function dsGoStandby() {
+  // 청중질문 내부 뷰 초기화
+  const lv = document.getElementById('ds-upflow-list-view');
+  const sv = document.getElementById('ds-upflow-selected-view');
+  if (lv) lv.style.display = 'none';
+  if (sv) sv.style.display = 'none';
+  showStandby();
+}
 
 async function dsShowUpflow() {
   await loadUpflows();
