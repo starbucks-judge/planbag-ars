@@ -21,13 +21,13 @@ html,body{height:100%;font-family:'Pretendard',sans-serif;overflow:hidden;backgr
 
 /* 대기화면 */
 #ds-standby{
-  background:var(--ds-bg, #0d1117);
+  background:#0d1117;
   align-items:center;justify-content:center;
   flex-direction:column;text-align:center;
   position:relative;overflow:hidden;
 }
-#ds-question{background:var(--ds-bg, #0d1117);padding:40px 60px}
-#ds-upflow{background:var(--ds-upflow-bg, #0d1117);padding:0;display:flex;flex-direction:column}
+#ds-question{background:#0d1117;padding:40px 60px}
+#ds-upflow{background:#0d1117;padding:0;display:flex;flex-direction:column}
 .ds-bg-img{position:absolute;inset:0;background-size:cover;background-position:center;opacity:.25}
 .ds-overlay{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 100%, rgba(15,52,96,.6) 0%, transparent 70%)}
 .standby-inner{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center}
@@ -297,38 +297,49 @@ async function loadSession(code) {
 
 function applySettings() {
   const s = ds.settings || {};
+
+  // 대기화면/문항화면 배경색
   const bg = s.bg_color || '#0d1117';
+  // 청중질문 배경색 - 완전 독립 (bg와 무관)
+  const upflowBg = s.upflow_bg_color || '#0d1117';
   const accent = s.accent_color || '#e94560';
-  // upflow_bg_color가 명시적으로 설정된 경우만 적용, 없으면 독립된 기본값
-  const upflowBg = (s.upflow_bg_color && s.upflow_bg_color !== s.bg_color)
-    ? s.upflow_bg_color
-    : (s.upflow_bg_color || '#0d1117');
 
-  document.documentElement.style.setProperty('--ds-bg', bg);
+  // CSS 변수 설정
   document.documentElement.style.setProperty('--ds-accent', accent);
-  document.documentElement.style.setProperty('--ds-upflow-bg', upflowBg);
 
-  // 각 화면 배경 직접 적용
+  // 대기화면 배경 (직접 적용)
   const standbyEl = document.getElementById('ds-standby');
-  if (standbyEl) standbyEl.style.background = bg;
-  const upflowEl = document.getElementById('ds-upflow');
-  if (upflowEl) upflowEl.style.background = upflowBg;
-  const questionEl = document.getElementById('ds-question');
-  if (questionEl) questionEl.style.background = bg;
+  if (standbyEl) standbyEl.style.setProperty('background', bg, 'important');
 
-  // 배경 이미지
-  if (s.bg_image_url) {
-    const bgImg = document.getElementById('ds-bg-img');
-    if (bgImg) { bgImg.style.backgroundImage = `url(${s.bg_image_url})`; bgImg.style.display = 'block'; }
+  // 문항 화면 배경
+  const questionEl = document.getElementById('ds-question');
+  if (questionEl) questionEl.style.setProperty('background', bg, 'important');
+
+  // 청중질문 화면 배경 - 대기화면과 완전 독립
+  const upflowEl = document.getElementById('ds-upflow');
+  if (upflowEl) upflowEl.style.setProperty('background', upflowBg, 'important');
+
+  // 배경 이미지 (대기화면만)
+  const bgImg = document.getElementById('ds-bg-img');
+  if (bgImg && s.bg_image_url) {
+    bgImg.style.backgroundImage = `url(${s.bg_image_url})`;
+    bgImg.style.display = 'block';
+  } else if (bgImg) {
+    bgImg.style.display = 'none';
   }
+
   // 로고
   const logo = document.getElementById('ds-logo');
-  if (logo && s.logo_url) { logo.src = s.logo_url; logo.style.display = 'block'; }
-  // 티커
-  if (s.show_ticker === false) {
-    const ticker = document.getElementById('ds-ticker');
-    if (ticker) ticker.style.display = 'none';
+  if (logo) {
+    if (s.logo_url) { logo.src = s.logo_url; logo.style.display = 'block'; }
+    else logo.style.display = 'none';
   }
+
+  // 티커
+  const ticker = document.getElementById('ds-ticker');
+  if (ticker) ticker.style.display = (s.show_ticker === false) ? 'none' : 'flex';
+
+  console.log('배경 적용 → 대기화면:', bg, '/ 청중질문:', upflowBg);
 }
 
 function showStandby() {
