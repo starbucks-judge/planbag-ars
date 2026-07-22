@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- v20260722_075127 -->
+<!DOCTYPE html><!-- v20260722_075452 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -301,22 +301,18 @@ function applySettings() {
   const accent = s.accent_color || '#e94560';
   const upflowBg = s.upflow_bg_color || '#0d1117';
 
-  // 기존 동적 스타일 태그 제거
-  const oldStyle = document.getElementById('ds-dynamic-style');
-  if (oldStyle) oldStyle.remove();
+  // 강조색
+  document.documentElement.style.setProperty('--ds-accent', accent);
 
-  // 새 스타일 태그 주입 (최고 우선순위)
-  const style = document.createElement('style');
-  style.id = 'ds-dynamic-style';
-  style.textContent = `
-    #ds-standby { background: ${bg} !important; }
-    #ds-question { background: ${bg} !important; }
-    #ds-upflow { background: ${upflowBg} !important; }
-    #ds-upflow #ds-upflow-list-view { background: ${upflowBg} !important; }
-    #ds-upflow #ds-upflow-selected-view { background: ${upflowBg} !important; }
-    :root { --ds-accent: ${accent}; }
-  `;
-  document.head.appendChild(style);
+  // 각 화면 배경 직접 적용
+  const standby = document.getElementById('ds-standby');
+  const question = document.getElementById('ds-question');
+  const upflow = document.getElementById('ds-upflow');
+  if (standby) standby.style.background = bg;
+  if (question) question.style.background = bg;
+  if (upflow) upflow.style.background = upflowBg;
+
+  console.log('BG:', bg, 'UPFLOW:', upflowBg);
 
   // 배경 이미지
   const bgImg = document.getElementById('ds-bg-img');
@@ -341,8 +337,6 @@ function applySettings() {
 
 function showStandby() {
   showScreen('standby');
-  // 배경색 재적용 (showScreen 후 스타일 초기화 방지)
-  applySettings();
   const ev = ds.session;
   const s = ds.settings;
 
@@ -462,7 +456,6 @@ async function loadQuestions() {
 function showQuestion(q) {
   ds.currentQuestion = q;
   showScreen('question');
-  applySettings();
   const typeLabels = { mc: '객관식', open: '주관식', word: '워드클라우드' };
   const qIdx = ds.questions.findIndex(x => x.id === q.id);
   document.getElementById('ds-q-type').textContent = typeLabels[q.type] || '';
@@ -727,7 +720,17 @@ function updateCtrlLabel() {
 // 화면 전환
 function showScreen(name) {
   document.querySelectorAll('.dscreen').forEach(s => s.classList.remove('active'));
-  document.getElementById('ds-' + name).classList.add('active');
+  const el = document.getElementById('ds-' + name);
+  if (el) el.classList.add('active');
+  // 화면별 배경색 직접 적용
+  const s = ds.settings || {};
+  const bg = s.bg_color || '#0d1117';
+  const upflowBg = s.upflow_bg_color || '#0d1117';
+  if (name === 'standby' || name === 'question') {
+    if (el) el.style.background = bg;
+  } else if (name === 'upflow') {
+    if (el) el.style.background = upflowBg;
+  }
 }
 
 function showError(msg) {
