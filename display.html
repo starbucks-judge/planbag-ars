@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- v20260722_075452 -->
+<!DOCTYPE html><!-- v20260722_080334 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -303,6 +303,9 @@ function applySettings() {
 
   // 강조색
   document.documentElement.style.setProperty('--ds-accent', accent);
+
+  // body 배경도 함께 설정
+  document.body.style.background = bg;
 
   // 각 화면 배경 직접 적용
   const standby = document.getElementById('ds-standby');
@@ -728,8 +731,10 @@ function showScreen(name) {
   const upflowBg = s.upflow_bg_color || '#0d1117';
   if (name === 'standby' || name === 'question') {
     if (el) el.style.background = bg;
+    document.body.style.background = bg;
   } else if (name === 'upflow') {
     if (el) el.style.background = upflowBg;
+    document.body.style.background = upflowBg;
   }
 }
 
