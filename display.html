@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- v20260722_080743 -->
+<!DOCTYPE html><!-- v20260722_081034 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -13,7 +13,7 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;700;800;900&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;font-family:'Pretendard',sans-serif;overflow:hidden;color:#fff}
+html,body{height:100%;font-family:'Pretendard',sans-serif;overflow:hidden;background:#0d1117;color:#fff}
 
 /* 디스플레이 화면 */
 .dscreen{display:none;position:absolute;inset:0;flex-direction:column}
@@ -719,18 +719,31 @@ function updateCtrlLabel() {
 
 // 화면 전환
 function showScreen(name) {
-  document.querySelectorAll('.dscreen').forEach(s => s.classList.remove('active'));
-  const el = document.getElementById('ds-' + name);
-  if (el) el.classList.add('active');
-  // 화면별 배경색 직접 적용
-  const s = ds.settings || {};
-  const bg = s.bg_color || '#0d1117';
-  const upflowBg = s.upflow_bg_color || '#0d1117';
+  const cfg = ds.settings || {};
+  const bg = cfg.bg_color || '#0d1117';
+  const upflowBg = cfg.upflow_bg_color || '#0d1117';
+
+  // 비활성 화면 완전히 숨김
+  document.querySelectorAll('.dscreen').forEach(function(el) {
+    el.classList.remove('active');
+    el.style.cssText = 'display:none !important';
+  });
+
+  // 활성 화면 표시 + 배경색 적용
+  const target = document.getElementById('ds-' + name);
+  if (!target) return;
   if (name === 'standby' || name === 'question') {
-    if (el) el.style.background = bg;
+    target.style.cssText = 'display:flex;flex-direction:column;background:' + bg;
+    document.documentElement.style.background = bg;
+    document.body.style.background = bg;
   } else if (name === 'upflow') {
-    if (el) el.style.background = upflowBg;
+    target.style.cssText = 'display:flex;flex-direction:column;background:' + upflowBg;
+    document.documentElement.style.background = upflowBg;
+    document.body.style.background = upflowBg;
+  } else {
+    target.style.cssText = 'display:flex;flex-direction:column;background:' + bg;
   }
+  target.classList.add('active');
 }
 
 function showError(msg) {
