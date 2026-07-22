@@ -1178,8 +1178,7 @@ function subscribeRealtime(sessionId) {
 async function refreshParticipantCount(sessionId) {
   const { count } = await sb.from('ars_attendance')
     .select('*', { count: 'exact', head: true })
-    .eq('session_id', sessionId)
-    .not('checked_at', 'is', null);
+    .eq('session_id', sessionId);
   state.participantCount = count || 0;
   document.getElementById('participant-count').textContent = state.participantCount;
   document.getElementById('live-realtime-count').textContent = state.participantCount;

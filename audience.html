@@ -261,14 +261,7 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
       </div>
       <div class="feature-arrow">›</div>
     </div>
-    <div class="feature-card" onclick="showAttendance()">
-      <div class="feature-icon att">✅</div>
-      <div>
-        <div class="feature-name">출석 체크</div>
-        <div class="feature-desc">출석 확인을 완료해요</div>
-      </div>
-      <div class="feature-arrow">›</div>
-    </div>
+
   </div>
 </div>
 
@@ -314,22 +307,6 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   </div>
 </div>
 
-<!-- ATTENDANCE SCREEN -->
-<div class="screen home-screen" id="screen-attendance">
-  <div class="home-header" style="display:flex;align-items:center;gap:12px;text-align:left">
-    <button onclick="goHome()" style="background:rgba(255,255,255,0.1);border:none;color:#fff;border-radius:10px;width:36px;height:36px;font-size:20px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center">‹</button>
-    <div>
-      <div class="home-event-name" style="font-size:18px">출석 체크</div>
-      <div class="home-sub">한 번만 체크하면 완료됩니다</div>
-    </div>
-  </div>
-  <div class="att-check-wrap" id="att-check-body">
-    <div class="att-icon">👋</div>
-    <div class="att-title" id="att-check-name">안녕하세요!</div>
-    <div class="att-sub">아래 버튼을 눌러 출석을 확인해주세요</div>
-    <button class="att-check-btn" onclick="checkAttendance()">✅ 출석 체크하기</button>
-  </div>
-</div>
 
 <!-- BOTTOM NAV (hidden on join/waiting) -->
 <nav class="bottom-nav hidden" id="bottom-nav">
@@ -345,10 +322,7 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     <span class="nav-btn-icon">💬</span>
     <span class="nav-btn-label">질문</span>
   </button>
-  <button class="nav-btn" id="nav-att" onclick="showAttendance()">
-    <span class="nav-btn-icon">✅</span>
-    <span class="nav-btn-label">출석</span>
-  </button>
+
 </nav>
 
 <script>
@@ -369,44 +343,60 @@ const app = {
 window.addEventListener('DOMContentLoaded', async () => {
   const params = new URLSearchParams(location.search);
   const urlCode = params.get('code');
+  const saved = localStorage.getItem('ars_session');
 
-  if (urlCode) {
-    // URL에 코드 있으면 → 이름 입력 화면 표시 (코드 입력창만 숨김)
-    const code = urlCode.toUpperCase();
-    app.code = code;
-    document.getElementById('code-input').value = code;
-
-    // localStorage에 같은 코드+이름이 있으면 이름 자동 채우기
-    const saved = localStorage.getItem('ars_session');
-    if (saved) {
-      try {
-        const { code: savedCode, name: savedName } = JSON.parse(saved);
-        if (savedCode === code && savedName && savedName !== '익명' && savedName !== '참여자') {
-          document.getElementById('name-input').value = savedName;
-        }
-      } catch {}
-    }
-    // 항상 입장 화면 표시 (이름 확인 필요)
-    showScreen('join');
-    return;
+  if (saved) {
+    try {
+      const { code: savedCode, name: savedName, sessionId } = JSON.parse(saved);
+      // URL 코드가 있고 저장된 코드와 다르면 → 새 코드로 이름 입력
+      if (urlCode && urlCode.toUpperCase() !== savedCode) {
+        setupJoinScreen(urlCode.toUpperCase(), '');
+        return;
+      }
+      // 세션 유효성 확인
+      const { data: session, error } = await sb.from('ars_sessions')
+        .select('*').eq('id', sessionId).eq('is_active', true).single();
+      if (error || !session) {
+        localStorage.removeItem('ars_session');
+        if (urlCode) setupJoinScreen(urlCode.toUpperCase(), '');
+        return;
+      }
+      // 이름 있으면 바로 홈으로 복원
+      app.code = savedCode;
+      app.name = savedName || '참여자';
+      app.sessionId = session.id;
+      app.sessionData = session;
+      app.accessLogged = true;
+      const { data: questions } = await sb.from('ars_questions')
+        .select('*').eq('session_id', session.id).order('sort_order');
+      app.questions = (questions || []).map(q => ({
+        id: q.id, type: q.type, text: q.text,
+        options: q.options || [], timeLimit: q.time_limit,
+        showResult: q.show_result, isActive: q.is_active, isClosed: q.is_closed
+      }));
+      subscribeQuestions(session.id);
+      enterHome();
+      return;
+    } catch { localStorage.removeItem('ars_session'); }
   }
 
-  // URL 코드 없고 localStorage 있으면 → 이름 입력 화면 표시 (이름 자동 채우기)
-  const saved = localStorage.getItem('ars_session');
-  if (!saved) return;
-  try {
-    const { code, name, sessionId } = JSON.parse(saved);
-    const { data: session, error } = await sb.from('ars_sessions')
-      .select('*').eq('id', sessionId).eq('is_active', true).single();
-    if (error || !session) { localStorage.removeItem('ars_session'); return; }
-    // 이름 자동 채우기만 하고 입장 화면 표시
-    document.getElementById('code-input').value = code;
-    if (name && name !== '익명' && name !== '참여자') {
-      document.getElementById('name-input').value = name;
-    }
-    showScreen('join');
-  } catch { localStorage.removeItem('ars_session'); }
+  // localStorage 없으면 → 입장 화면
+  if (urlCode) {
+    setupJoinScreen(urlCode.toUpperCase(), '');
+  }
+  // 코드도 없으면 기본 join 화면 그대로
 });
+
+function setupJoinScreen(code, name) {
+  app.code = code;
+  document.getElementById('code-input').value = code;
+  const codeWrap = document.getElementById('code-input-wrap');
+  if (codeWrap) codeWrap.style.display = 'none';
+  const title = document.querySelector('.join-card-title');
+  if (title) title.textContent = '이름을 입력하고 참여하세요';
+  if (name) document.getElementById('name-input').value = name;
+  showScreen('join');
+}
 
 async function completeJoin(session, name) {
   app.sessionId = session.id;
@@ -423,9 +413,21 @@ async function completeJoin(session, name) {
     showResult: q.show_result, isActive: q.is_active, isClosed: q.is_closed
   }));
   subscribeQuestions(session.id);
-  // 이름 입력 여부 확인
-  const nameInput = document.getElementById('name-input');
-  if (nameInput?.value.trim()) app.name = nameInput.value.trim();
+
+  // 접속 기록 (참여자 수 실시간 반영 - 중복 방지)
+  if (!app.accessLogged) {
+    app.accessLogged = true;
+    const { data: existing } = await sb.from('ars_attendance')
+      .select('id').eq('session_id', session.id).eq('participant_name', app.name).maybeSingle();
+    if (!existing) {
+      sb.from('ars_attendance').insert({
+        session_id: session.id,
+        participant_name: app.name,
+        checked_at: null
+      }).then(() => {});
+    }
+  }
+
   enterHome();
 }
 

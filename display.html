@@ -296,17 +296,19 @@ async function loadSession(code) {
 }
 
 function applySettings() {
-  const s = ds.settings;
+  const s = ds.settings || {};
   const bg = s.bg_color || '#0d1117';
   const accent = s.accent_color || '#e94560';
-  // 청중질문 배경은 별도 설정 없으면 기본값 유지 (대기화면과 독립)
-  const upflowBg = s.upflow_bg_color || '#0d1117';
+  // upflow_bg_color가 명시적으로 설정된 경우만 적용, 없으면 독립된 기본값
+  const upflowBg = (s.upflow_bg_color && s.upflow_bg_color !== s.bg_color)
+    ? s.upflow_bg_color
+    : (s.upflow_bg_color || '#0d1117');
 
   document.documentElement.style.setProperty('--ds-bg', bg);
   document.documentElement.style.setProperty('--ds-accent', accent);
   document.documentElement.style.setProperty('--ds-upflow-bg', upflowBg);
 
-  // 각 화면에 직접 배경 적용 (CSS 변수 미지원 방지)
+  // 각 화면 배경 직접 적용
   const standbyEl = document.getElementById('ds-standby');
   if (standbyEl) standbyEl.style.background = bg;
   const upflowEl = document.getElementById('ds-upflow');
@@ -316,17 +318,16 @@ function applySettings() {
 
   // 배경 이미지
   if (s.bg_image_url) {
-    document.getElementById('ds-bg-img').style.backgroundImage = `url(${s.bg_image_url})`;
-    document.getElementById('ds-bg-img').style.display = 'block';
+    const bgImg = document.getElementById('ds-bg-img');
+    if (bgImg) { bgImg.style.backgroundImage = `url(${s.bg_image_url})`; bgImg.style.display = 'block'; }
   }
-
   // 로고
   const logo = document.getElementById('ds-logo');
-  if (s.logo_url) { logo.src = s.logo_url; logo.style.display = 'block'; }
-
+  if (logo && s.logo_url) { logo.src = s.logo_url; logo.style.display = 'block'; }
   // 티커
   if (s.show_ticker === false) {
-    document.getElementById('ds-ticker').style.display = 'none';
+    const ticker = document.getElementById('ds-ticker');
+    if (ticker) ticker.style.display = 'none';
   }
 }
 
