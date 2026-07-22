@@ -299,6 +299,14 @@ textarea{resize:vertical;min-height:80px}
                 <span style="font-size:12px;color:var(--muted)">ON — 이름 없이 참여 가능</span>
               </div>
             </div>
+            <div class="form-row">
+              <label>참여자 데이터 초기화</label>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <button class="btn btn-danger btn-sm" onclick="resetParticipants()">🔄 전체 초기화</button>
+                <button class="btn btn-ghost btn-sm" onclick="resetAnonymous()">👤 익명만 초기화</button>
+              </div>
+              <div style="font-size:11px;color:var(--muted);margin-top:5px">출석·응답 데이터 삭제 → 재접속 시 새로 참여 가능</div>
+            </div>
           </div>
           <div class="card">
             <div class="card-title"><span class="dot"></span>청중 참여 링크</div>
@@ -726,6 +734,33 @@ function goEventList() {
 // ============================================================
 // EVENT SETUP SAVE
 // ============================================================
+async function resetParticipants() {
+  if (!state.sessionId) return;
+  if (!confirm('참여자 전체 데이터(출석·응답)를 초기화하시겠습니까?\n\n참여자들이 재접속하면 새로 참여할 수 있습니다.')) return;
+  // 출석 데이터 삭제
+  await sb.from('ars_attendance').delete().eq('session_id', state.sessionId);
+  // 응답 데이터 삭제
+  await sb.from('ars_responses').delete().eq('session_id', state.sessionId);
+  // 참여자 수 리셋
+  state.participantCount = 0;
+  document.getElementById('participant-count').textContent = '0';
+  document.getElementById('live-realtime-count').textContent = '0';
+  alert('참여자 데이터가 초기화되었습니다.\n참여자들이 재접속하면 새로 참여할 수 있습니다.');
+}
+
+async function resetAnonymous() {
+  if (!state.sessionId) return;
+  if (!confirm('익명 참여자 데이터만 초기화하시겠습니까?')) return;
+  // 익명 출석 삭제
+  await sb.from('ars_attendance')
+    .delete()
+    .eq('session_id', state.sessionId)
+    .eq('participant_name', '익명');
+  // 참여자 수 갱신
+  await refreshParticipantCount(state.sessionId);
+  alert('익명 참여자 데이터가 초기화되었습니다.');
+}
+
 async function saveEventInfo() {
   if (!state.sessionId) return;
   const { error } = await sb.from('ars_sessions').update({
@@ -1300,9 +1335,20 @@ async function loadUpflows() {
   state.upflows = (data || []).map(u => ({
     id: u.id, text: u.text, votes: u.vote_count,
     answered: u.is_answered,
+    highlighted: u.is_highlighted || false,
     time: new Date(u.created_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
   }));
   renderUpflow();
+}
+
+async function toggleHighlight(id, currentState) {
+  const nv = !currentState;
+  // 기존 강조 해제 후 새 항목 강조 (한 번에 하나만)
+  if (nv) {
+    await sb.from('ars_upflows').update({ is_highlighted: false }).eq('session_id', state.sessionId);
+  }
+  await sb.from('ars_upflows').update({ is_highlighted: nv }).eq('id', id);
+  await loadUpflows();
 }
 
 function renderUpflow() {
@@ -1312,12 +1358,15 @@ function renderUpflow() {
   const list = document.getElementById('upflow-list');
   if (!state.upflows.length) { list.innerHTML = `<div class="empty"><div class="empty-icon">💬</div><div class="empty-title">질문이 없습니다</div></div>`; return; }
   list.innerHTML = state.upflows.map(u => `
-    <div class="upflow-item">
+    <div class="upflow-item" style="${u.highlighted ? 'background:#fff5f6;border-left:3px solid var(--accent)' : ''}">
       <div class="upflow-votes"><div class="vote-count">${u.votes}</div><div class="vote-label">추천</div></div>
       <div style="flex:1">
         <div class="upflow-text">${u.text}</div>
-        <div class="upflow-meta">${u.time} ${u.answered ? '✅ 답변완료' : '• 미답변'}</div>
+        <div class="upflow-meta">${u.time} ${u.answered ? '✅ 답변완료' : '• 미답변'} ${u.highlighted ? '📺 디스플레이 표시 중' : ''}</div>
         <div class="upflow-actions">
+          <button class="btn btn-sm ${u.highlighted ? 'btn-primary' : 'btn-secondary'}" onclick="toggleHighlight('${u.id}', ${u.highlighted})">
+            ${u.highlighted ? '📺 표시 중 (클릭시 해제)' : '📺 디스플레이에 표시'}
+          </button>
           <button class="btn btn-sm ${u.answered ? 'btn-ghost' : 'btn-success'}" onclick="markAnswered('${u.id}', ${u.answered})">
             ${u.answered ? '↩ 답변완료 취소' : '✅ 답변완료'}
           </button>

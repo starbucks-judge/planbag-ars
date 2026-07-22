@@ -381,6 +381,9 @@ function subscribeRealtime(sessionId) {
       addTickerItem('💬 새 질문: ' + payload.new.text.slice(0, 30) + (payload.new.text.length > 30 ? '...' : ''));
       await loadUpflows();
     })
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'ars_upflows', filter: `session_id=eq.${sessionId}` }, async () => {
+      await loadUpflows();
+    })
     .subscribe();
 }
 
@@ -486,18 +489,39 @@ function renderOpenBubbles(resps) {
 async function loadUpflows() {
   const { data } = await sb.from('ars_upflows')
     .select('*').eq('session_id', ds.session.id)
-    .eq('is_answered', false).order('vote_count', { ascending: false }).limit(5);
+    .order('vote_count', { ascending: false });
   ds.upflows = data || [];
   if (document.getElementById('ds-upflow').classList.contains('active')) renderUpflowScreen();
 }
 
 function renderUpflowScreen() {
-  document.getElementById('ds-upflow-list').innerHTML = ds.upflows.map((u,i) =>
-    `<div class="ds-upflow-item ${i===0?'top':''}">
-      <div class="ds-upflow-votes">${u.vote_count}</div>
-      <div class="ds-upflow-text">${u.text}</div>
-    </div>`
-  ).join('');
+  const highlighted = ds.upflows.filter(u => u.is_highlighted);
+  const showList = highlighted.length > 0 ? highlighted : ds.upflows.filter(u => !u.is_answered).slice(0, 5);
+
+  if (showList.length === 0) {
+    document.getElementById('ds-upflow-list').innerHTML = `
+      <div style="text-align:center;padding:40px;color:rgba(255,255,255,0.3);font-size:20px">
+        표시할 질문이 없습니다
+      </div>`;
+    return;
+  }
+
+  // 강조된 질문이 있으면 1개만 크게, 없으면 추천순 목록
+  if (highlighted.length > 0) {
+    const u = highlighted[0];
+    document.getElementById('ds-upflow-list').innerHTML = `
+      <div class="ds-upflow-item top" style="border:2px solid var(--ds-accent,#e94560);padding:40px 48px">
+        <div class="ds-upflow-votes" style="font-size:clamp(40px,6vw,72px)">${u.vote_count}</div>
+        <div class="ds-upflow-text" style="font-size:clamp(24px,3.5vw,44px);font-weight:700">${u.text}</div>
+      </div>`;
+  } else {
+    document.getElementById('ds-upflow-list').innerHTML = showList.map((u,i) =>
+      `<div class="ds-upflow-item ${i===0?'top':''}">
+        <div class="ds-upflow-votes">${u.vote_count}</div>
+        <div class="ds-upflow-text">${u.text}</div>
+      </div>`
+    ).join('');
+  }
 }
 
 // ============================================================
