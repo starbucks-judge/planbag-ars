@@ -476,6 +476,17 @@ function subscribeQuestions(sessionId) {
         alert('행사가 종료되었습니다');
         location.reload();
       }
+      // 참여 코드가 변경되면 자동 로그아웃 (관리자 초기화 시)
+      const saved = localStorage.getItem('ars_session');
+      if (saved) {
+        const { code } = JSON.parse(saved);
+        if (payload.new.access_code !== code) {
+          localStorage.removeItem('ars_session');
+          localStorage.removeItem('att_checked_' + sessionId);
+          alert('관리자가 참여자를 초기화했습니다.\n새 코드로 다시 참여해주세요.');
+          location.reload();
+        }
+      }
     })
     .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'ars_questions', filter: `session_id=eq.${sessionId}` }, (payload) => {
       const q = payload.new;

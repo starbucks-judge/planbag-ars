@@ -736,29 +736,47 @@ function goEventList() {
 // ============================================================
 async function resetParticipants() {
   if (!state.sessionId) return;
-  if (!confirm('참여자 전체 데이터(출석·응답)를 초기화하시겠습니까?\n\n참여자들이 재접속하면 새로 참여할 수 있습니다.')) return;
-  // 출석 데이터 삭제
+  if (!confirm('참여자 전체를 초기화하시겠습니까?\n\n• 출석·응답 데이터 삭제\n• 참여 코드 재발급 (기존 접속자 자동 로그아웃)\n\n참여자들이 새 QR/코드로 재접속해야 합니다.')) return;
+
+  // 1) 출석·응답 데이터 삭제
   await sb.from('ars_attendance').delete().eq('session_id', state.sessionId);
-  // 응답 데이터 삭제
   await sb.from('ars_responses').delete().eq('session_id', state.sessionId);
-  // 참여자 수 리셋
+
+  // 2) 새 참여 코드 발급 (기존 localStorage 무효화)
+  const newCode = Math.random().toString(36).substr(2,6).toUpperCase();
+  await sb.from('ars_sessions').update({ access_code: newCode }).eq('id', state.sessionId);
+
+  // 3) UI 업데이트
+  document.getElementById('ev-code').value = newCode;
+  document.getElementById('sidebar-code').textContent = newCode;
+  updateQR();
+
+  // 4) 참여자 수 리셋
   state.participantCount = 0;
   document.getElementById('participant-count').textContent = '0';
   document.getElementById('live-realtime-count').textContent = '0';
-  alert('참여자 데이터가 초기화되었습니다.\n참여자들이 재접속하면 새로 참여할 수 있습니다.');
+
+  alert(`초기화 완료!\n\n새 참여 코드: ${newCode}\n\n기존 참여자들은 자동 로그아웃됩니다.\n새 QR코드로 재접속하도록 안내해주세요.`);
 }
 
 async function resetAnonymous() {
   if (!state.sessionId) return;
-  if (!confirm('익명 참여자 데이터만 초기화하시겠습니까?')) return;
+  if (!confirm('익명 참여자 데이터만 초기화하시겠습니까?\n\n익명 출석 기록이 삭제됩니다.')) return;
+
   // 익명 출석 삭제
   await sb.from('ars_attendance')
     .delete()
     .eq('session_id', state.sessionId)
     .eq('participant_name', '익명');
-  // 참여자 수 갱신
+
+  // 익명 응답 삭제
+  await sb.from('ars_responses')
+    .delete()
+    .eq('session_id', state.sessionId)
+    .eq('participant_name', '익명');
+
   await refreshParticipantCount(state.sessionId);
-  alert('익명 참여자 데이터가 초기화되었습니다.');
+  alert('익명 참여자 데이터가 초기화되었습니다.\n\n익명 참여자는 새로 접속해도 코드가 같으면 자동 복원될 수 있습니다.\n완전 초기화가 필요하면 [전체 초기화]를 사용해주세요.');
 }
 
 async function saveEventInfo() {
