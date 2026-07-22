@@ -500,17 +500,7 @@ async function loadUpflows() {
 
 function renderUpflowScreen() {
   const highlighted = ds.upflows.filter(u => u.is_highlighted);
-  const showList = highlighted.length > 0 ? highlighted : ds.upflows.filter(u => !u.is_answered).slice(0, 5);
 
-  if (showList.length === 0) {
-    document.getElementById('ds-upflow-list').innerHTML = `
-      <div style="text-align:center;padding:40px;color:rgba(255,255,255,0.3);font-size:20px">
-        표시할 질문이 없습니다
-      </div>`;
-    return;
-  }
-
-  // 강조된 질문이 있으면 1개만 크게, 없으면 추천순 목록
   if (highlighted.length > 0) {
     const u = highlighted[0];
     document.getElementById('ds-upflow-list').innerHTML = `
@@ -518,13 +508,20 @@ function renderUpflowScreen() {
         <div class="ds-upflow-votes" style="font-size:clamp(40px,6vw,72px)">${u.vote_count}</div>
         <div class="ds-upflow-text" style="font-size:clamp(24px,3.5vw,44px);font-weight:700">${u.text}</div>
       </div>`;
+    // 청중질문 화면이 아니면 자동 전환
+    if (!document.getElementById('ds-upflow').classList.contains('active')) {
+      showScreen('upflow');
+    }
   } else {
-    document.getElementById('ds-upflow-list').innerHTML = showList.map((u,i) =>
-      `<div class="ds-upflow-item ${i===0?'top':''}">
-        <div class="ds-upflow-votes">${u.vote_count}</div>
-        <div class="ds-upflow-text">${u.text}</div>
-      </div>`
-    ).join('');
+    // highlight 없으면 빈 화면
+    document.getElementById('ds-upflow-list').innerHTML = `
+      <div style="text-align:center;padding:60px;color:rgba(255,255,255,0.2);font-size:20px">
+        관리자가 질문을 선택하면 여기에 표시됩니다
+      </div>`;
+    // 청중질문 화면이 표시 중이었으면 대기화면으로
+    if (document.getElementById('ds-upflow').classList.contains('active')) {
+      showStandby();
+    }
   }
 }
 

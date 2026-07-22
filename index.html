@@ -1355,9 +1355,11 @@ async function loadUpflows() {
     answered: u.is_answered,
     highlighted: u.is_highlighted || false,
     name: u.participant_name || '익명',
+    createdAt: u.created_at,
     time: new Date(u.created_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
   }));
-  renderUpflow();
+  // 현재 정렬 기준 유지
+  sortUpflow(state.currentSort || 'votes', true);
 }
 
 async function toggleHighlight(id, currentState) {
@@ -1395,19 +1397,20 @@ function renderUpflow() {
     </div>`).join('');
 }
 
-function sortUpflow(by) {
-  if (by==='votes') state.upflows.sort((a,b)=>b.votes-a.votes);
-  else state.upflows.sort((a,b)=>b.time.localeCompare(a.time));
-  // 버튼 활성 상태 표시
-  const vBtn = document.getElementById('sort-votes-btn');
-  const tBtn = document.getElementById('sort-time-btn');
-  if (vBtn && tBtn) {
-    if (by==='votes') {
-      vBtn.style.cssText = 'background:var(--accent);color:#fff;border-color:var(--accent)';
-      tBtn.style.cssText = '';
-    } else {
-      tBtn.style.cssText = 'background:var(--accent);color:#fff;border-color:var(--accent)';
-      vBtn.style.cssText = '';
+function sortUpflow(by, silent = false) {
+  state.currentSort = by;
+  if (by === 'votes') {
+    state.upflows.sort((a,b) => b.votes - a.votes);
+  } else {
+    // 최신순: createdAt 내림차순
+    state.upflows.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+  }
+  if (!silent) {
+    const vBtn = document.getElementById('sort-votes-btn');
+    const tBtn = document.getElementById('sort-time-btn');
+    if (vBtn && tBtn) {
+      vBtn.style.cssText = by === 'votes' ? 'background:var(--accent);color:#fff;border-color:var(--accent)' : '';
+      tBtn.style.cssText = by === 'time' ? 'background:var(--accent);color:#fff;border-color:var(--accent)' : '';
     }
   }
   renderUpflow();
