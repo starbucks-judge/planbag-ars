@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- v20260722_073917 -->
+<!DOCTYPE html><!-- v20260722_074607 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -301,19 +301,22 @@ function applySettings() {
   const accent = s.accent_color || '#e94560';
   const upflowBg = s.upflow_bg_color || '#0d1117';
 
-  document.documentElement.style.setProperty('--ds-accent', accent);
+  // 기존 동적 스타일 태그 제거
+  const oldStyle = document.getElementById('ds-dynamic-style');
+  if (oldStyle) oldStyle.remove();
 
-  // 대기화면 - bg 적용
-  document.getElementById('ds-standby').setAttribute('style',
-    'background:' + bg + ' !important; position:relative; overflow:hidden; align-items:center; justify-content:center; flex-direction:column; text-align:center;');
-
-  // 문항화면 - bg 적용
-  const qEl = document.getElementById('ds-question');
-  if (qEl) qEl.setAttribute('style', 'background:' + bg + ' !important; padding:40px 60px;');
-
-  // 청중질문 - upflowBg 적용 (완전 독립)
-  const uEl = document.getElementById('ds-upflow');
-  if (uEl) uEl.setAttribute('style', 'background:' + upflowBg + ' !important; padding:0; display:flex; flex-direction:column;');
+  // 새 스타일 태그 주입 (최고 우선순위)
+  const style = document.createElement('style');
+  style.id = 'ds-dynamic-style';
+  style.textContent = `
+    #ds-standby { background: ${bg} !important; }
+    #ds-question { background: ${bg} !important; }
+    #ds-upflow { background: ${upflowBg} !important; }
+    #ds-upflow #ds-upflow-list-view { background: ${upflowBg} !important; }
+    #ds-upflow #ds-upflow-selected-view { background: ${upflowBg} !important; }
+    :root { --ds-accent: ${accent}; }
+  `;
+  document.head.appendChild(style);
 
   // 배경 이미지
   const bgImg = document.getElementById('ds-bg-img');
