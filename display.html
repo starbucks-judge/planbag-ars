@@ -87,13 +87,24 @@ html,body{height:100%;font-family:'Pretendard',sans-serif;overflow:hidden;backgr
 @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 
 /* 청중 질문 화면 */
-#ds-upflow{background:var(--ds-bg, #0d1117);padding:40px 60px}
-.ds-upflow-list{display:flex;flex-direction:column;gap:14px;margin-top:24px}
-.ds-upflow-item{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:18px;padding:24px 32px;display:flex;align-items:flex-start;gap:20px}
-.ds-upflow-item.top{background:rgba(233,69,96,0.08);border-color:rgba(233,69,96,0.25)}
-.ds-upflow-votes{font-size:clamp(32px,5vw,56px);font-weight:900;color:rgba(255,255,255,0.3);min-width:70px;text-align:center;line-height:1}
-.ds-upflow-item.top .ds-upflow-votes{color:var(--ds-accent,#e94560)}
-.ds-upflow-text{font-size:clamp(18px,2.5vw,28px);font-weight:600;color:#fff;line-height:1.4;flex:1}
+#ds-upflow{background:var(--ds-upflow-bg, var(--ds-bg, #0d1117));padding:0;display:flex;flex-direction:column}
+.ds-upflow-header{display:flex;align-items:center;justify-content:space-between;padding:32px 60px 20px;flex-shrink:0}
+.ds-upflow-title{font-size:clamp(22px,3vw,40px);font-weight:800;color:#fff}
+.ds-upflow-back-btn{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:12px;padding:10px 22px;color:rgba(255,255,255,0.7);font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .2s}
+.ds-upflow-back-btn:hover{background:rgba(255,255,255,0.2)}
+.ds-upflow-scroll{flex:1;overflow-y:auto;padding:0 60px 100px;scroll-behavior:smooth}
+.ds-upflow-scroll::-webkit-scrollbar{width:6px}
+.ds-upflow-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.15);border-radius:3px}
+.ds-upflow-list{display:flex;flex-direction:column;gap:12px}
+.ds-upflow-item{background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.1);border-radius:18px;padding:22px 28px;cursor:pointer;transition:all .2s}
+.ds-upflow-item:hover{background:rgba(255,255,255,0.1);border-color:rgba(255,255,255,0.25);transform:translateX(4px)}
+.ds-upflow-item.selected{background:rgba(233,69,96,0.12);border-color:rgba(233,69,96,0.5)}
+.ds-upflow-item.top{border-color:rgba(233,69,96,0.3)}
+.ds-upflow-text{font-size:clamp(16px,2vw,26px);font-weight:600;color:#fff;line-height:1.45}
+/* 선택된 질문 단독 표시 */
+.ds-upflow-selected-view{flex:1;display:flex;align-items:center;justify-content:center;padding:40px 60px}
+.ds-upflow-selected-card{background:rgba(233,69,96,0.08);border:2px solid rgba(233,69,96,0.4);border-radius:24px;padding:52px 64px;width:100%}
+.ds-upflow-selected-text{font-size:clamp(28px,4vw,56px);font-weight:700;color:#fff;line-height:1.35}
 
 /* 관리자 컨트롤 패널 */
 .ds-ctrl{position:fixed;bottom:60px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:200;background:rgba(0,0,0,0.75);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:10px 14px;transition:opacity .3s}
@@ -189,12 +200,31 @@ html,body{height:100%;font-family:'Pretendard',sans-serif;overflow:hidden;backgr
 
 <!-- 청중 질문 화면 -->
 <div class="dscreen" id="ds-upflow">
-  <div class="ds-q-header">
-    <div class="ds-live-badge"><div class="ds-live-dot"></div> 청중 질문</div>
-    <div style="color:rgba(255,255,255,0.4);font-size:16px" id="ds-upflow-mode-label">선택된 질문</div>
+  <!-- 전체 목록 뷰 -->
+  <div id="ds-upflow-list-view" style="display:flex;flex-direction:column;height:100%">
+    <div class="ds-upflow-header">
+      <div>
+        <div class="ds-live-badge" style="margin-bottom:8px"><div class="ds-live-dot"></div> 청중 질문</div>
+        <div class="ds-upflow-title">💬 전체 질문 목록</div>
+      </div>
+      <button class="ds-upflow-back-btn" onclick="dsGoStandby()">🏠 대기화면으로</button>
+    </div>
+    <div class="ds-upflow-scroll">
+      <div class="ds-upflow-list" id="ds-upflow-list"></div>
+    </div>
   </div>
-  <div style="font-size:clamp(28px,4vw,48px);font-weight:800;color:#fff;margin-bottom:8px">💬 청중 질문</div>
-  <div class="ds-upflow-list" id="ds-upflow-list"></div>
+  <!-- 선택된 질문 단독 뷰 -->
+  <div id="ds-upflow-selected-view" style="display:none;flex-direction:column;height:100%">
+    <div class="ds-upflow-header">
+      <div class="ds-live-badge"><div class="ds-live-dot"></div> 선택된 질문</div>
+      <button class="ds-upflow-back-btn" onclick="dsShowAllUpflow()">📋 전체 질문 보기</button>
+    </div>
+    <div class="ds-upflow-selected-view">
+      <div class="ds-upflow-selected-card">
+        <div class="ds-upflow-selected-text" id="ds-selected-text"></div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- 관리자 컨트롤 패널 (마우스 올리면 표시) -->
@@ -522,69 +552,89 @@ async function loadUpflows() {
   if (prevHighlighted !== currHighlighted) {
     applyHighlightChange();
   } else if (document.getElementById('ds-upflow').classList.contains('active')) {
-    const modeLabel = document.getElementById('ds-upflow-mode-label');
-    const isAllMode = modeLabel?.textContent === '전체 질문 목록 (추천순)';
-    renderUpflowContent(isAllMode);
+    // 현재 모드 유지하면서 내용만 갱신
+    const listView = document.getElementById('ds-upflow-list-view');
+    const selectedView = document.getElementById('ds-upflow-selected-view');
+    if (listView && listView.style.display !== 'none') renderUpflowList();
+    if (selectedView && selectedView.style.display !== 'none') {
+      const h = ds.upflows.find(u => u.is_highlighted);
+      if (h) document.getElementById('ds-selected-text').textContent = h.text;
+    }
   }
+}
+
+// 전체 목록 표시
+function dsShowAllUpflow() {
+  const lv = document.getElementById('ds-upflow-list-view');
+  const sv = document.getElementById('ds-upflow-selected-view');
+  if (lv) lv.style.display = 'flex';
+  if (sv) sv.style.display = 'none';
+  showScreen('upflow');
+  renderUpflowList();
+}
+
+// 선택된 질문 단독 표시
+function dsShowSelectedUpflow(text) {
+  const lv = document.getElementById('ds-upflow-list-view');
+  const sv = document.getElementById('ds-upflow-selected-view');
+  if (lv) lv.style.display = 'none';
+  if (sv) sv.style.display = 'flex';
+  const el = document.getElementById('ds-selected-text');
+  if (el) el.textContent = text;
+  showScreen('upflow');
+}
+
+// 전체 목록 렌더링
+function renderUpflowList() {
+  const list = document.getElementById('ds-upflow-list');
+  if (!list) return;
+  const items = ds.upflows.filter(u => !u.is_answered);
+  if (items.length === 0) {
+    list.innerHTML = `<div style="text-align:center;padding:60px;color:rgba(255,255,255,0.3);font-size:22px">아직 등록된 질문이 없습니다</div>`;
+    return;
+  }
+  list.innerHTML = items.map((u, i) => `
+    <div class="ds-upflow-item ${u.is_highlighted ? 'selected' : ''} ${i===0?'top':''}"
+      onclick="dsSelectUpflow('${u.id}')">
+      <div class="ds-upflow-text">${u.text}</div>
+    </div>`).join('');
+}
+
+// 목록에서 질문 클릭 선택
+async function dsSelectUpflow(id) {
+  await sb.from('ars_upflows').update({ is_highlighted: false }).eq('session_id', ds.session.id);
+  await sb.from('ars_upflows').update({ is_highlighted: true }).eq('id', id);
+  const u = ds.upflows.find(u => u.id === id);
+  if (u) { u.is_highlighted = true; dsShowSelectedUpflow(u.text); }
 }
 
 function applyHighlightChange() {
   const highlighted = ds.upflows.filter(u => u.is_highlighted);
-
+  const upflowActive = document.getElementById('ds-upflow').classList.contains('active');
   if (highlighted.length > 0) {
-    // highlight 있음 → 선택 질문 화면으로 전환
-    showScreen('upflow');
-    renderUpflowContent(false);
+    dsShowSelectedUpflow(highlighted[0].text);
   } else {
-    // highlight 해제 → 현재 화면이 선택모드였으면 선택모드 해제만 (화면 전환 없음)
-    const modeLabel = document.getElementById('ds-upflow-mode-label');
-    const isUpflowActive = document.getElementById('ds-upflow').classList.contains('active');
-    if (isUpflowActive && modeLabel?.textContent === '선택된 질문') {
-      // 선택 해제 → 전체목록으로 전환 (화면은 유지)
-      renderUpflowContent(true);
-    }
-    // 그 외(전체목록 모드, 다른 화면)는 그대로 유지
+    if (upflowActive) dsShowAllUpflow();
   }
 }
 
 function renderUpflowContent(showAll = false) {
-  const highlighted = ds.upflows.filter(u => u.is_highlighted);
-  const list = document.getElementById('ds-upflow-list');
-  const modeLabel = document.getElementById('ds-upflow-mode-label');
-  if (!list) return;
-
-  if (showAll) {
-    // 전체 목록 표시 (추천수 제외)
-    if (modeLabel) modeLabel.textContent = '전체 질문 목록 (추천순)';
-    const allQ = ds.upflows.filter(u => !u.is_answered);
-    if (allQ.length === 0) {
-      list.innerHTML = `<div style="text-align:center;padding:60px;color:rgba(255,255,255,0.3);font-size:22px">아직 등록된 질문이 없습니다</div>`;
-    } else {
-      list.innerHTML = allQ.map((u, i) => `
-        <div class="ds-upflow-item ${i===0?'top':''}" style="padding:24px 32px">
-          <div class="ds-upflow-text">${u.text}</div>
-        </div>`).join('');
-    }
-  } else if (highlighted.length > 0) {
-    // 선택된 질문 크게 표시 (추천수 제외)
-    if (modeLabel) modeLabel.textContent = '선택된 질문';
-    const u = highlighted[0];
-    list.innerHTML = `
-      <div class="ds-upflow-item top" style="border:2px solid var(--ds-accent,#e94560);padding:48px 56px">
-        <div class="ds-upflow-text" style="font-size:clamp(28px,4vw,52px);font-weight:700;line-height:1.4">${u.text}</div>
-      </div>`;
-  } else {
-    // 아무것도 선택 안 됨
-    if (modeLabel) modeLabel.textContent = '';
-    list.innerHTML = `
-      <div style="text-align:center;padding:60px;color:rgba(255,255,255,0.2);font-size:20px">
-        관리자가 질문을 선택하면 여기에 표시됩니다
-      </div>`;
+  if (showAll) dsShowAllUpflow();
+  else {
+    const h = ds.upflows.filter(u => u.is_highlighted);
+    if (h.length > 0) dsShowSelectedUpflow(h[0].text);
+    else dsShowAllUpflow();
   }
 }
 
 function renderUpflowScreen() {
-  renderUpflowContent(false);
+  const sv = document.getElementById('ds-upflow-selected-view');
+  const lv = document.getElementById('ds-upflow-list-view');
+  if (sv && sv.style.display !== 'none') {
+    const h = ds.upflows.find(u => u.is_highlighted);
+    if (h) { const el = document.getElementById('ds-selected-text'); if(el) el.textContent = h.text; }
+  }
+  if (lv && lv.style.display !== 'none') renderUpflowList();
 }
 
 // ============================================================
@@ -623,8 +673,7 @@ function dsGoStandby() { showStandby(); }
 
 async function dsShowUpflow() {
   await loadUpflows();
-  renderUpflowContent(true); // 전체 목록 표시
-  showScreen('upflow');
+  dsShowAllUpflow();
 }
 
 function dsPrevQ() {
