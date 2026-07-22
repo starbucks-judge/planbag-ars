@@ -562,8 +562,24 @@ const state = {
 // ============================================================
 // INIT
 // ============================================================
-window.addEventListener('DOMContentLoaded', () => {
-  loadEvents();
+window.addEventListener('DOMContentLoaded', async () => {
+  // URL에 행사 ID가 있으면 바로 해당 행사로 진입
+  const params = new URLSearchParams(location.search);
+  const eventId = params.get('event');
+  if (eventId) {
+    await enterEvent(eventId);
+  } else {
+    await loadEvents();
+  }
+});
+
+// 브라우저 뒤로가기 처리
+window.addEventListener('popstate', async (e) => {
+  if (e.state?.eventId) {
+    await enterEvent(e.state.eventId);
+  } else {
+    goEventList();
+  }
 });
 
 // ============================================================
@@ -658,6 +674,9 @@ async function enterEvent(id) {
   state.sessionId = ev.id;
   state.sessionActive = ev.is_active;
 
+  // URL에 행사 ID 저장 (새로고침 시 복원용)
+  history.pushState({ eventId: id }, '', '?event=' + id);
+
   // UI 업데이트
   document.getElementById('screen-events').classList.remove('active');
   document.getElementById('screen-event').classList.add('active');
@@ -710,6 +729,7 @@ async function enterEvent(id) {
 }
 
 function goEventList() {
+  history.pushState({}, '', location.pathname);
   if (state.realtimeChannel) {
     sb.removeChannel(state.realtimeChannel);
     state.realtimeChannel = null;
@@ -1113,9 +1133,16 @@ function subscribeRealtime(sessionId) {
     })
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'ars_upflows', filter: `session_id=eq.${sessionId}` }, async () => {
       await loadUpflows();
+      // 청중질문 탭이 열려있으면 즉시 렌더
+      if (document.getElementById('tab-upflow').classList.contains('active')) {
+        renderUpflow();
+      }
     })
     .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'ars_upflows', filter: `session_id=eq.${sessionId}` }, async () => {
       await loadUpflows();
+      if (document.getElementById('tab-upflow').classList.contains('active')) {
+        renderUpflow();
+      }
     })
     .subscribe((status) => {
       console.log('Realtime 상태:', status);
@@ -1130,7 +1157,11 @@ function subscribeRealtime(sessionId) {
     if (state.activeQuestion?.dbId) {
       await refreshResponseCount(state.activeQuestion.dbId);
     }
-  }, 5000);
+    // 청중질문 탭 열려있으면 3초마다 갱신
+    if (document.getElementById('tab-upflow').classList.contains('active')) {
+      await loadUpflows();
+    }
+  }, 3000);
 }
 
 async function refreshParticipantCount(sessionId) {
