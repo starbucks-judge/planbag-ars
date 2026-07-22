@@ -464,8 +464,8 @@ textarea{resize:vertical;min-height:80px}
           <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--bg)">
             <span style="font-size:13px;font-weight:700">청중 질문 목록</span>
             <div style="display:flex;gap:6px">
-              <button class="btn btn-secondary btn-sm" onclick="sortUpflow('votes')">추천순</button>
-              <button class="btn btn-secondary btn-sm" onclick="sortUpflow('time')">최신순</button>
+              <button class="btn btn-secondary btn-sm" id="sort-votes-btn" onclick="sortUpflow('votes')" style="background:var(--accent);color:#fff;border-color:var(--accent)">추천순</button>
+              <button class="btn btn-secondary btn-sm" id="sort-time-btn" onclick="sortUpflow('time')">최신순</button>
             </div>
           </div>
           <div id="upflow-list"><div class="empty"><div class="empty-icon">💬</div><div class="empty-title">질문이 없습니다</div></div></div>
@@ -1398,6 +1398,18 @@ function renderUpflow() {
 function sortUpflow(by) {
   if (by==='votes') state.upflows.sort((a,b)=>b.votes-a.votes);
   else state.upflows.sort((a,b)=>b.time.localeCompare(a.time));
+  // 버튼 활성 상태 표시
+  const vBtn = document.getElementById('sort-votes-btn');
+  const tBtn = document.getElementById('sort-time-btn');
+  if (vBtn && tBtn) {
+    if (by==='votes') {
+      vBtn.style.cssText = 'background:var(--accent);color:#fff;border-color:var(--accent)';
+      tBtn.style.cssText = '';
+    } else {
+      tBtn.style.cssText = 'background:var(--accent);color:#fff;border-color:var(--accent)';
+      vBtn.style.cssText = '';
+    }
+  }
   renderUpflow();
 }
 async function markAnswered(id, currentState) {

@@ -383,6 +383,10 @@ function subscribeRealtime(sessionId) {
     })
     .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'ars_upflows', filter: `session_id=eq.${sessionId}` }, async () => {
       await loadUpflows();
+      // upflow 화면이 활성화 중이면 즉시 재렌더링
+      if (document.getElementById('ds-upflow').classList.contains('active')) {
+        renderUpflowScreen();
+      }
     })
     .subscribe();
 }
