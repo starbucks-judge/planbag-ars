@@ -487,7 +487,6 @@ function subscribeQuestions(sessionId) {
         const { code } = JSON.parse(saved);
         if (payload.new.access_code !== code) {
           localStorage.removeItem('ars_session');
-          localStorage.removeItem('att_checked_' + sessionId);
           alert('관리자가 참여자를 초기화했습니다.\n새 코드로 다시 참여해주세요.');
           location.reload();
         }
@@ -558,25 +557,17 @@ function shakeInput() {
 function showScreen(name) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('screen-'+name).classList.add('active');
-  const navScreens = ['home','question','ask','attendance'];
+  const navScreens = ['home','question','ask'];
   document.getElementById('bottom-nav').classList.toggle('hidden', !navScreens.includes(name));
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-  const navMap = {home:'nav-home',question:'nav-quiz',ask:'nav-ask',attendance:'nav-att'};
+  const navMap = {home:'nav-home',question:'nav-quiz',ask:'nav-ask'};
   if(navMap[name]) document.getElementById(navMap[name])?.classList.add('active');
 }
 
 function enterHome() {
   document.getElementById('home-event-name').textContent = app.sessionData?.event_name || '행사명';
   document.getElementById('home-participant-name').textContent = app.name + '님 환영합니다 👋';
-  document.getElementById('att-check-name').textContent = app.name + '님, 안녕하세요!';
   showScreen('home');
-
-  // 출석체크 완료 상태 복원 (localStorage)
-  const checkedKey = 'att_checked_' + app.sessionId;
-  if (localStorage.getItem(checkedKey)) {
-    app.attendanceChecked = true;
-    showAttCheckedUI();
-  }
 }
 
 function goHome() { showScreen('home'); }
@@ -917,7 +908,6 @@ async function applyChangeName() {
 
   // 홈 화면 이름 업데이트
   document.getElementById('home-participant-name').textContent = newName + '님 환영합니다 👋';
-  document.getElementById('att-check-name').textContent = newName + '님, 안녕하세요!';
   closeChangeName();
 }
 
