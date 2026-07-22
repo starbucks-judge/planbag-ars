@@ -355,6 +355,14 @@ textarea{resize:vertical;min-height:80px}
               </div>
             </div>
             <div class="form-row">
+              <label>청중질문 배경 색상</label>
+              <div style="display:flex;gap:8px;align-items:center">
+                <input type="color" id="ds-upflow-bg-color" value="#0d1117" style="width:44px;height:36px;padding:2px;border-radius:6px;border:1px solid var(--border);cursor:pointer">
+                <input type="text" id="ds-upflow-bg-color-text" value="#0d1117" style="flex:1" oninput="document.getElementById('ds-upflow-bg-color').value=this.value">
+                <span style="font-size:11px;color:var(--muted);white-space:nowrap">기본: 배경색과 동일</span>
+              </div>
+            </div>
+            <div class="form-row">
               <label>로고 이미지 URL (선택)</label>
               <input type="text" id="ds-logo-url" placeholder="https://...">
             </div>
@@ -391,6 +399,7 @@ textarea{resize:vertical;min-height:80px}
           <script>
             document.getElementById('ds-bg-color').addEventListener('input', function(){ document.getElementById('ds-bg-color-text').value = this.value; });
             document.getElementById('ds-accent-color').addEventListener('input', function(){ document.getElementById('ds-accent-color-text').value = this.value; });
+            document.getElementById('ds-upflow-bg-color').addEventListener('input', function(){ document.getElementById('ds-upflow-bg-color-text').value = this.value; });
           </script>
         </div>
       </div>
@@ -821,6 +830,7 @@ async function saveDisplaySettings() {
   const settings = {
     bg_color: document.getElementById('ds-bg-color').value,
     accent_color: document.getElementById('ds-accent-color').value,
+    upflow_bg_color: document.getElementById('ds-upflow-bg-color').value,
     logo_url: document.getElementById('ds-logo-url').value.trim(),
     bg_image_url: document.getElementById('ds-bg-image-url').value.trim(),
     ticker_message: document.getElementById('ds-ticker-msg').value.trim(),
@@ -839,6 +849,7 @@ function loadDisplaySettings(settings) {
   if (!settings) return;
   if (settings.bg_color) { document.getElementById('ds-bg-color').value = settings.bg_color; document.getElementById('ds-bg-color-text').value = settings.bg_color; }
   if (settings.accent_color) { document.getElementById('ds-accent-color').value = settings.accent_color; document.getElementById('ds-accent-color-text').value = settings.accent_color; }
+  if (settings.upflow_bg_color) { document.getElementById('ds-upflow-bg-color').value = settings.upflow_bg_color; document.getElementById('ds-upflow-bg-color-text').value = settings.upflow_bg_color; }
   if (settings.logo_url) document.getElementById('ds-logo-url').value = settings.logo_url;
   if (settings.bg_image_url) document.getElementById('ds-bg-image-url').value = settings.bg_image_url;
   if (settings.ticker_message) document.getElementById('ds-ticker-msg').value = settings.ticker_message;

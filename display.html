@@ -159,6 +159,11 @@ html,body{height:100%;font-family:'Pretendard',sans-serif;overflow:hidden;backgr
       <span class="ds-count" id="ds-count">0</span>
       <span>명 참여 중</span>
     </div>
+    <div id="ds-standby-upflow-btn" style="display:none;margin-top:24px">
+      <button onclick="dsShowUpflow()" style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:14px;padding:12px 28px;color:rgba(255,255,255,0.7);font-size:16px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .2s" onmouseover="this.style.background='rgba(255,255,255,0.2)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'">
+        💬 전체 질문 보기
+      </button>
+    </div>
   </div>
 </div>
 
@@ -266,8 +271,13 @@ function applySettings() {
   const s = ds.settings;
   const bg = s.bg_color || '#0d1117';
   const accent = s.accent_color || '#e94560';
+  const upflowBg = s.upflow_bg_color || bg;
   document.documentElement.style.setProperty('--ds-bg', bg);
   document.documentElement.style.setProperty('--ds-accent', accent);
+  document.documentElement.style.setProperty('--ds-upflow-bg', upflowBg);
+  // 청중질문 화면 배경 직접 적용
+  const upflowEl = document.getElementById('ds-upflow');
+  if (upflowEl) upflowEl.style.background = upflowBg;
 
   // 배경 이미지
   if (s.bg_image_url) {
@@ -501,38 +511,39 @@ async function loadUpflows() {
   const prev = ds.upflows;
   ds.upflows = data || [];
 
+  // 대기화면 버튼 표시/숨김
+  const btn = document.getElementById('ds-standby-upflow-btn');
+  if (btn) btn.style.display = ds.upflows.length > 0 ? 'block' : 'none';
+
   // highlight 상태 변화 감지
   const prevHighlighted = prev.filter(u => u.is_highlighted).map(u => u.id).join(',');
   const currHighlighted = ds.upflows.filter(u => u.is_highlighted).map(u => u.id).join(',');
 
   if (prevHighlighted !== currHighlighted) {
-    // highlight 변경됨 → 화면 전환 포함 처리
     applyHighlightChange();
   } else if (document.getElementById('ds-upflow').classList.contains('active')) {
-    // 청중질문 화면이 열려있으면 내용만 갱신
-    renderUpflowContent();
+    const modeLabel = document.getElementById('ds-upflow-mode-label');
+    const isAllMode = modeLabel?.textContent === '전체 질문 목록 (추천순)';
+    renderUpflowContent(isAllMode);
   }
 }
 
 function applyHighlightChange() {
   const highlighted = ds.upflows.filter(u => u.is_highlighted);
-  const upflowActive = document.getElementById('ds-upflow').classList.contains('active');
-  const modeLabel = document.getElementById('ds-upflow-mode-label');
-  const isAllMode = modeLabel?.textContent === '전체 질문 목록 (추천순)';
 
   if (highlighted.length > 0) {
-    // highlight 있음 → 선택 질문 표시로 전환
+    // highlight 있음 → 선택 질문 화면으로 전환
     showScreen('upflow');
     renderUpflowContent(false);
   } else {
-    // highlight 해제됨
-    if (upflowActive && isAllMode) {
-      // 전체목록 모드였으면 그대로 유지
+    // highlight 해제 → 현재 화면이 선택모드였으면 선택모드 해제만 (화면 전환 없음)
+    const modeLabel = document.getElementById('ds-upflow-mode-label');
+    const isUpflowActive = document.getElementById('ds-upflow').classList.contains('active');
+    if (isUpflowActive && modeLabel?.textContent === '선택된 질문') {
+      // 선택 해제 → 전체목록으로 전환 (화면은 유지)
       renderUpflowContent(true);
-    } else if (upflowActive) {
-      // 선택 모드였으면 대기화면으로
-      showStandby();
     }
+    // 그 외(전체목록 모드, 다른 화면)는 그대로 유지
   }
 }
 
