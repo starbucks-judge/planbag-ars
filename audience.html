@@ -221,8 +221,27 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 <div class="screen home-screen" id="screen-home">
   <div class="home-header">
     <div class="home-event-name" id="home-event-name">행사명</div>
-    <div class="home-sub" id="home-participant-name">참여 중</div>
+    <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:4px">
+      <div class="home-sub" id="home-participant-name">참여 중</div>
+      <button onclick="openChangeName()" style="background:rgba(255,255,255,0.15);border:none;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;color:rgba(255,255,255,0.7);cursor:pointer;font-family:inherit">✏️ 변경</button>
+    </div>
   </div>
+
+  <!-- 이름 변경 모달 -->
+  <div id="change-name-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:100;align-items:center;justify-content:center;padding:24px">
+    <div style="background:#fff;border-radius:20px;padding:28px 24px;width:100%;max-width:360px">
+      <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:6px">이름 변경</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:20px">변경 후 질문에 새 이름이 표시됩니다</div>
+      <input type="text" id="new-name-input" placeholder="새 이름 입력" maxlength="20"
+        style="width:100%;padding:14px;border:2px solid var(--border);border-radius:12px;font-size:16px;font-family:inherit;outline:none;margin-bottom:16px"
+        onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
+      <div style="display:flex;gap:10px">
+        <button onclick="closeChangeName()" style="flex:1;padding:14px;border:1.5px solid var(--border);border-radius:12px;font-size:15px;font-weight:600;background:#fff;cursor:pointer;font-family:inherit">취소</button>
+        <button onclick="applyChangeName()" style="flex:1;padding:14px;background:var(--accent);border:none;border-radius:12px;font-size:15px;font-weight:600;color:#fff;cursor:pointer;font-family:inherit">변경하기</button>
+      </div>
+    </div>
+  </div>
+
   <div class="home-body">
     <div class="home-section-title">참여 메뉴</div>
     <div class="feature-card" onclick="showQuiz()">
@@ -786,12 +805,14 @@ async function renderAskList() {
   if (app.sessionId) {
     const { data } = await sb.from('ars_upflows').select('*').eq('session_id', app.sessionId).order('vote_count', { ascending: false });
     const votedSet = getVotedSet();
-    app.upflows = (data || []).map(u => ({ id: u.id, text: u.text, votes: u.vote_count, voted: votedSet.has(u.id) }));
+    app.upflows = (data || []).map(u => ({ id: u.id, text: u.text, votes: u.vote_count, voted: votedSet.has(u.id), participant_name: u.participant_name || '익명' }));
   }
   const list = document.getElementById('ask-list');
   if (!app.upflows.length) { list.innerHTML = '<div style="text-align:center;padding:32px;color:var(--muted)">아직 질문이 없습니다</div>'; return; }
-  list.innerHTML = app.upflows.map(u => `
-    <div class="qlist-item">
+  list.innerHTML = app.upflows.map(u => {
+    const isMine = u.participant_name === app.name;
+    return `
+    <div class="qlist-item" style="${isMine ? 'border-color:var(--accent);background:#fff5f7' : ''}">
       <div class="qlist-vote">
         <div class="qlist-vote-num">${u.votes}</div>
         <div class="qlist-vote-label">추천</div>
@@ -799,9 +820,14 @@ async function renderAskList() {
           ${u.voted ? '▼ 취소' : '▲ 추천'}
         </button>
       </div>
-      <div class="qlist-text">${u.text}</div>
-    </div>
-  `).join('');
+      <div style="flex:1">
+        <div class="qlist-text">${u.text}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">
+          ${u.participant_name || '익명'} ${isMine ? '· <span style=\"color:var(--accent);font-weight:600\">내 질문</span>' : ''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 async function sendQuestion() {
@@ -844,7 +870,47 @@ async function voteQuestion(id) {
 // ============================================================
 // ATTENDANCE
 // ============================================================
-function showAttendance() { showScreen('attendance'); }
+function openChangeName() {
+  const modal = document.getElementById('change-name-modal');
+  modal.style.display = 'flex';
+  const input = document.getElementById('new-name-input');
+  input.value = app.name === '익명' ? '' : app.name;
+  setTimeout(() => input.focus(), 100);
+}
+
+function closeChangeName() {
+  document.getElementById('change-name-modal').style.display = 'none';
+}
+
+async function applyChangeName() {
+  const newName = document.getElementById('new-name-input').value.trim();
+  if (!newName) { alert('이름을 입력해주세요'); return; }
+  const oldName = app.name;
+  app.name = newName;
+
+  // localStorage 업데이트
+  if (app.sessionId) {
+    localStorage.setItem('ars_session', JSON.stringify({
+      code: app.code, name: newName, sessionId: app.sessionId
+    }));
+    // 출석 레코드 이름 업데이트
+    const { data: att } = await sb.from('ars_attendance')
+      .select('id').eq('session_id', app.sessionId).eq('participant_name', oldName).maybeSingle();
+    if (att) {
+      await sb.from('ars_attendance').update({ participant_name: newName }).eq('id', att.id);
+    }
+  }
+
+  // 홈 화면 이름 업데이트
+  document.getElementById('home-participant-name').textContent = newName + '님 환영합니다 👋';
+  document.getElementById('att-check-name').textContent = newName + '님, 안녕하세요!';
+  closeChangeName();
+}
+
+// 모달 바깥 클릭 시 닫기
+document.getElementById('change-name-modal')?.addEventListener('click', function(e) {
+  if (e.target === this) closeChangeName();
+});
 
 function showAttCheckedUI() {
   const el = document.getElementById('att-check-body');

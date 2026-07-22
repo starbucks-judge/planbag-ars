@@ -1354,6 +1354,7 @@ async function loadUpflows() {
     id: u.id, text: u.text, votes: u.vote_count,
     answered: u.is_answered,
     highlighted: u.is_highlighted || false,
+    name: u.participant_name || '익명',
     time: new Date(u.created_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
   }));
   renderUpflow();
@@ -1380,7 +1381,7 @@ function renderUpflow() {
       <div class="upflow-votes"><div class="vote-count">${u.votes}</div><div class="vote-label">추천</div></div>
       <div style="flex:1">
         <div class="upflow-text">${u.text}</div>
-        <div class="upflow-meta">${u.time} ${u.answered ? '✅ 답변완료' : '• 미답변'} ${u.highlighted ? '📺 디스플레이 표시 중' : ''}</div>
+        <div class="upflow-meta">${u.time} · ${u.name || '익명'} ${u.answered ? '✅ 답변완료' : '• 미답변'} ${u.highlighted ? '📺 디스플레이 표시 중' : ''}</div>
         <div class="upflow-actions">
           <button class="btn btn-sm ${u.highlighted ? 'btn-primary' : 'btn-secondary'}" onclick="toggleHighlight('${u.id}', ${u.highlighted})">
             ${u.highlighted ? '📺 표시 중 (클릭시 해제)' : '📺 디스플레이에 표시'}
