@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- v20260722_073310 -->
+<!DOCTYPE html><!-- v20260722_073917 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -297,40 +297,29 @@ async function loadSession(code) {
 
 function applySettings() {
   const s = ds.settings || {};
-
-  // 대기화면/문항화면 배경색
   const bg = s.bg_color || '#0d1117';
   const accent = s.accent_color || '#e94560';
+  const upflowBg = s.upflow_bg_color || '#0d1117';
 
-  // 청중질문 배경색 - upflow_bg_color가 명시적으로 DB에 저장된 값만 사용
-  // 없으면 bg와 무관하게 독립 기본값 사용
-  const hasUpflowBg = s.hasOwnProperty('upflow_bg_color') && s.upflow_bg_color;
-  const upflowBg = hasUpflowBg ? s.upflow_bg_color : '#0d1117';
-
-  // 강조색
   document.documentElement.style.setProperty('--ds-accent', accent);
 
-  // 대기화면 배경
-  const standbyEl = document.getElementById('ds-standby');
-  if (standbyEl) standbyEl.style.setProperty('background', bg, 'important');
+  // 대기화면 - bg 적용
+  document.getElementById('ds-standby').setAttribute('style',
+    'background:' + bg + ' !important; position:relative; overflow:hidden; align-items:center; justify-content:center; flex-direction:column; text-align:center;');
 
-  // 문항 화면 배경
-  const questionEl = document.getElementById('ds-question');
-  if (questionEl) questionEl.style.setProperty('background', bg, 'important');
+  // 문항화면 - bg 적용
+  const qEl = document.getElementById('ds-question');
+  if (qEl) qEl.setAttribute('style', 'background:' + bg + ' !important; padding:40px 60px;');
 
-  // 청중질문 화면 배경 - 완전 독립
-  const upflowEl = document.getElementById('ds-upflow');
-  if (upflowEl) upflowEl.style.setProperty('background', upflowBg, 'important');
+  // 청중질문 - upflowBg 적용 (완전 독립)
+  const uEl = document.getElementById('ds-upflow');
+  if (uEl) uEl.setAttribute('style', 'background:' + upflowBg + ' !important; padding:0; display:flex; flex-direction:column;');
 
-  // 배경 이미지 (대기화면만)
+  // 배경 이미지
   const bgImg = document.getElementById('ds-bg-img');
   if (bgImg) {
-    if (s.bg_image_url) {
-      bgImg.style.backgroundImage = `url(${s.bg_image_url})`;
-      bgImg.style.display = 'block';
-    } else {
-      bgImg.style.display = 'none';
-    }
+    if (s.bg_image_url) { bgImg.style.backgroundImage = 'url(' + s.bg_image_url + ')'; bgImg.style.display = 'block'; }
+    else bgImg.style.display = 'none';
   }
 
   // 로고
@@ -344,7 +333,7 @@ function applySettings() {
   const ticker = document.getElementById('ds-ticker');
   if (ticker) ticker.style.display = (s.show_ticker === false) ? 'none' : 'flex';
 
-  console.log('[배경] 대기화면:', bg, '| 청중질문:', upflowBg, '| upflow_bg_color in DB:', hasUpflowBg);
+  console.log('BG:', bg, 'UPFLOW_BG:', upflowBg);
 }
 
 function showStandby() {
