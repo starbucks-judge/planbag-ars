@@ -383,10 +383,6 @@ function subscribeRealtime(sessionId) {
     })
     .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'ars_upflows', filter: `session_id=eq.${sessionId}` }, async () => {
       await loadUpflows();
-      // upflow 화면이 활성화 중이면 즉시 재렌더링
-      if (document.getElementById('ds-upflow').classList.contains('active')) {
-        renderUpflowScreen();
-      }
     })
     .subscribe((status) => {
       console.log('Display Realtime 상태:', status);
@@ -498,38 +494,62 @@ function renderOpenBubbles(resps) {
 // UPFLOW
 // ============================================================
 async function loadUpflows() {
+  if (!ds.session) return;
   const { data } = await sb.from('ars_upflows')
     .select('*').eq('session_id', ds.session.id)
     .order('vote_count', { ascending: false });
+  const prev = ds.upflows;
   ds.upflows = data || [];
-  renderUpflowScreen();
+
+  // highlight 상태 변화 감지
+  const prevHighlighted = prev.filter(u => u.is_highlighted).map(u => u.id).join(',');
+  const currHighlighted = ds.upflows.filter(u => u.is_highlighted).map(u => u.id).join(',');
+
+  if (prevHighlighted !== currHighlighted) {
+    // highlight 변경됨 → 화면 전환 포함 처리
+    applyHighlightChange();
+  } else if (document.getElementById('ds-upflow').classList.contains('active')) {
+    // 청중질문 화면이 열려있으면 내용만 갱신
+    renderUpflowContent();
+  }
 }
 
-function renderUpflowScreen() {
+function applyHighlightChange() {
   const highlighted = ds.upflows.filter(u => u.is_highlighted);
-
   if (highlighted.length > 0) {
-    const u = highlighted[0];
-    document.getElementById('ds-upflow-list').innerHTML = `
-      <div class="ds-upflow-item top" style="border:2px solid var(--ds-accent,#e94560);padding:40px 48px">
-        <div class="ds-upflow-votes" style="font-size:clamp(40px,6vw,72px)">${u.vote_count}</div>
-        <div class="ds-upflow-text" style="font-size:clamp(24px,3.5vw,44px);font-weight:700">${u.text}</div>
-      </div>`;
-    // 청중질문 화면이 아니면 자동 전환
-    if (!document.getElementById('ds-upflow').classList.contains('active')) {
-      showScreen('upflow');
-    }
+    // highlight 있음 → 청중질문 화면으로 전환
+    showScreen('upflow');
+    renderUpflowContent();
   } else {
-    // highlight 없으면 빈 화면
-    document.getElementById('ds-upflow-list').innerHTML = `
-      <div style="text-align:center;padding:60px;color:rgba(255,255,255,0.2);font-size:20px">
-        관리자가 질문을 선택하면 여기에 표시됩니다
-      </div>`;
-    // 청중질문 화면이 표시 중이었으면 대기화면으로
+    // highlight 해제 → 대기화면으로
     if (document.getElementById('ds-upflow').classList.contains('active')) {
       showStandby();
     }
   }
+}
+
+function renderUpflowContent() {
+  const highlighted = ds.upflows.filter(u => u.is_highlighted);
+  const list = document.getElementById('ds-upflow-list');
+  if (!list) return;
+
+  if (highlighted.length > 0) {
+    const u = highlighted[0];
+    list.innerHTML = `
+      <div class="ds-upflow-item top" style="border:2px solid var(--ds-accent,#e94560);padding:40px 48px">
+        <div class="ds-upflow-votes" style="font-size:clamp(40px,6vw,72px)">${u.vote_count}</div>
+        <div class="ds-upflow-text" style="font-size:clamp(24px,3.5vw,44px);font-weight:700">${u.text}</div>
+      </div>`;
+  } else {
+    list.innerHTML = `
+      <div style="text-align:center;padding:60px;color:rgba(255,255,255,0.2);font-size:20px">
+        관리자가 질문을 선택하면 여기에 표시됩니다
+      </div>`;
+  }
+}
+
+function renderUpflowScreen() {
+  renderUpflowContent();
 }
 
 // ============================================================
@@ -568,7 +588,7 @@ function dsGoStandby() { showStandby(); }
 
 async function dsShowUpflow() {
   await loadUpflows();
-  renderUpflowScreen();
+  renderUpflowContent();
   showScreen('upflow');
 }
 
