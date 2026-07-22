@@ -388,7 +388,14 @@ function subscribeRealtime(sessionId) {
         renderUpflowScreen();
       }
     })
-    .subscribe();
+    .subscribe((status) => {
+      console.log('Display Realtime 상태:', status);
+    });
+
+  // 폴링 백업 - Realtime 미작동 시에도 3초마다 upflow 갱신
+  setInterval(async () => {
+    await loadUpflows();
+  }, 3000);
 }
 
 // ============================================================
@@ -495,7 +502,7 @@ async function loadUpflows() {
     .select('*').eq('session_id', ds.session.id)
     .order('vote_count', { ascending: false });
   ds.upflows = data || [];
-  if (document.getElementById('ds-upflow').classList.contains('active')) renderUpflowScreen();
+  renderUpflowScreen();
 }
 
 function renderUpflowScreen() {
