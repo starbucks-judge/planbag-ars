@@ -528,6 +528,18 @@ function subscribeQuestions(sessionId) {
         }
       }
     })
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'ars_upflows', filter: `session_id=eq.${sessionId}` }, async () => {
+      // 질문하기 화면이 열려있으면 목록 자동 갱신
+      if (document.getElementById('screen-ask').classList.contains('active')) {
+        await renderAskList();
+      }
+    })
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'ars_upflows', filter: `session_id=eq.${sessionId}` }, async () => {
+      // 질문하기 화면이 열려있으면 목록 자동 갱신 (추천수, highlight 변경 포함)
+      if (document.getElementById('screen-ask').classList.contains('active')) {
+        await renderAskList();
+      }
+    })
     .subscribe();
 }
 
