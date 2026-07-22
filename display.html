@@ -26,6 +26,8 @@ html,body{height:100%;font-family:'Pretendard',sans-serif;overflow:hidden;backgr
   flex-direction:column;text-align:center;
   position:relative;overflow:hidden;
 }
+#ds-question{background:var(--ds-bg, #0d1117);padding:40px 60px}
+#ds-upflow{background:var(--ds-upflow-bg, #0d1117);padding:0;display:flex;flex-direction:column}
 .ds-bg-img{position:absolute;inset:0;background-size:cover;background-position:center;opacity:.25}
 .ds-overlay{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 100%, rgba(15,52,96,.6) 0%, transparent 70%)}
 .standby-inner{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center}
@@ -45,10 +47,6 @@ html,body{height:100%;font-family:'Pretendard',sans-serif;overflow:hidden;backgr
 .ds-count{font-size:28px;font-weight:800;color:#4ade80;margin:0 4px}
 
 /* 문항 화면 */
-#ds-question{
-  background:var(--ds-bg, #0d1117);
-  padding:40px 60px;
-}
 .ds-q-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:32px}
 .ds-live-badge{display:flex;align-items:center;gap:8px;background:rgba(233,69,96,0.15);border:1px solid rgba(233,69,96,0.3);border-radius:20px;padding:8px 20px;font-size:16px;font-weight:700;color:var(--ds-accent,#e94560)}
 .ds-live-dot{width:10px;height:10px;border-radius:50%;background:var(--ds-accent,#e94560);animation:blink 1s infinite}
@@ -87,7 +85,7 @@ html,body{height:100%;font-family:'Pretendard',sans-serif;overflow:hidden;backgr
 @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 
 /* 청중 질문 화면 */
-#ds-upflow{background:var(--ds-upflow-bg, var(--ds-bg, #0d1117));padding:0;display:flex;flex-direction:column}
+
 .ds-upflow-header{display:flex;align-items:center;justify-content:space-between;padding:32px 60px 20px;flex-shrink:0}
 .ds-upflow-title{font-size:clamp(22px,3vw,40px);font-weight:800;color:#fff}
 .ds-upflow-back-btn{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:12px;padding:10px 22px;color:rgba(255,255,255,0.7);font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .2s}
@@ -301,13 +299,20 @@ function applySettings() {
   const s = ds.settings;
   const bg = s.bg_color || '#0d1117';
   const accent = s.accent_color || '#e94560';
-  const upflowBg = s.upflow_bg_color || bg;
+  // 청중질문 배경은 별도 설정 없으면 기본값 유지 (대기화면과 독립)
+  const upflowBg = s.upflow_bg_color || '#0d1117';
+
   document.documentElement.style.setProperty('--ds-bg', bg);
   document.documentElement.style.setProperty('--ds-accent', accent);
   document.documentElement.style.setProperty('--ds-upflow-bg', upflowBg);
-  // 청중질문 화면 배경 직접 적용
+
+  // 각 화면에 직접 배경 적용 (CSS 변수 미지원 방지)
+  const standbyEl = document.getElementById('ds-standby');
+  if (standbyEl) standbyEl.style.background = bg;
   const upflowEl = document.getElementById('ds-upflow');
   if (upflowEl) upflowEl.style.background = upflowBg;
+  const questionEl = document.getElementById('ds-question');
+  if (questionEl) questionEl.style.background = bg;
 
   // 배경 이미지
   if (s.bg_image_url) {
